@@ -48,10 +48,24 @@ export default function Documents() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.title.trim()) {
+      toast.error('Title is required');
+      return;
+    }
+    if (!formData.url.trim()) {
+      toast.error('Document URL is required');
+      return;
+    }
+
     try {
       const documentData = {
-        ...formData,
-        uploadedBy: 'admin', // In a real app, this would be the current user's ID
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        url: formData.url.trim(),
+        accessLevel: formData.accessLevel,
+        uploadedBy: 'admin',
         uploadedAt: editingDocument?.uploadedAt || new Date().toISOString(),
       };
 
@@ -68,7 +82,7 @@ export default function Documents() {
       fetchDocuments();
     } catch (error) {
       console.error('Error saving document:', error);
-      toast.error('Failed to save document');
+      toast.error('Failed to save document: ' + (error as any).message);
     }
   };
 
@@ -283,6 +297,7 @@ export default function Documents() {
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter document title"
               required
             />
           </div>

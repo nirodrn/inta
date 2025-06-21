@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ref, get, push, update, remove } from 'firebase/database';
-import { FileText, Plus, Edit, Trash2, Search, Download, Eye, Calendar } from 'lucide-react';
+import { FileText, Plus, Edit, Trash2, Search, Download, Calendar } from 'lucide-react';
 import { database } from '../../config/firebase';
 import { Assignment, Intern, Group } from '../../types';
 import Card from '../../components/UI/Card';
@@ -17,6 +17,7 @@ export default function Assignments() {
   const [showModal, setShowModal] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -73,12 +74,44 @@ export default function Assignments() {
     }
   };
 
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    if (submitting) return;
+    
+    // Validate required fields
+    if (!formData.title.trim()) {
+      toast.error('Title is required');
+      return;
+    }
+    if (!formData.description.trim()) {
+      toast.error('Description is required');
+      return;
+    }
+    if (!formData.deadline) {
+      toast.error('Deadline is required');
+      return;
+    }
+
+    setSubmitting(true);
+
     try {
       const assignmentData = {
-        ...formData,
-        createdBy: 'admin', // In a real app, this would be the current user's ID
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        deadline: formData.deadline,
+        targetAudience: formData.targetAudience,
+        targetIds: formData.targetIds || [],
+        fileUrl: formData.fileUrl.trim() || '',
+        createdBy: 'admin',
         createdAt: editingAssignment?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -96,7 +129,9 @@ export default function Assignments() {
       fetchData();
     } catch (error) {
       console.error('Error saving assignment:', error);
-      toast.error('Failed to save assignment');
+      toast.error('Failed to save assignment: ' + (error as any).message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -138,6 +173,13 @@ export default function Assignments() {
     setEditingAssignment(null);
   };
 
+  const handleModalClose = () => {
+    if (!submitting) {
+      setShowModal(false);
+      resetForm();
+    }
+  };
+
   const getTargetDisplay = (assignment: Assignment) => {
     if (assignment.targetAudience === 'all') {
       return 'All Interns';
@@ -162,12 +204,12 @@ export default function Assignments() {
   );
 
   const handleTargetToggle = (targetId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      targetIds: prev.targetIds.includes(targetId)
-        ? prev.targetIds.filter(id => id !== targetId)
-        : [...prev.targetIds, targetId]
-    }));
+    const currentTargets = formData.targetIds;
+    const newTargets = currentTargets.includes(targetId)
+      ? currentTargets.filter(id => id !== targetId)
+      : [...currentTargets, targetId];
+    
+    handleInputChange('targetIds', newTargets);
   };
 
   if (loading) {
@@ -189,7 +231,7 @@ export default function Assignments() {
           <h1 className="text-3xl font-bold text-gray-900">Assignment Management</h1>
           <p className="text-gray-600">Create and manage assignments for interns</p>
         </div>
-        <Button onClick={() => setShowModal(true)}>
+        <Button onClick={() => setShowModal(true)} disabled={submitting}>
           <Plus className="h-4 w-4 mr-2" />
           Create Assignment
         </Button>
@@ -267,10 +309,10 @@ export default function Assignments() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Button variant="secondary" size="sm" onClick={() => handleEdit(assignment)}>
+                  <Button variant="secondary" size="sm" onClick={() => handleEdit(assignment)} disabled={submitting}>
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="danger" size="sm" onClick={() => handleDelete(assignment.id)}>
+                  <Button variant="danger" size="sm" onClick={() => handleDelete(assignment.id)} disabled={submitting}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -293,10 +335,7 @@ export default function Assignments() {
       {/* Assignment Modal */}
       <Modal
         isOpen={showModal}
-        onClose={() => {
-          setShowModal(false);
-          resetForm();
-        }}
+        onClose={handleModalClose}
         title={editingAssignment ? 'Edit Assignment' : 'Create Assignment'}
         size="lg"
       >
@@ -308,9 +347,12 @@ export default function Assignments() {
             <input
               type="text"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) => handleInputChange('title', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter assignment title"
               required
+              disabled={submitting}
+              autoComplete="off"
             />
           </div>
 
@@ -320,10 +362,12 @@ export default function Assignments() {
             </label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => handleInputChange('description', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows={4}
+              placeholder="Enter assignment description"
               required
+              disabled={submitting}
             />
           </div>
 
@@ -335,9 +379,10 @@ export default function Assignments() {
               <input
                 type="datetime-local"
                 value={formData.deadline}
-                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                onChange={(e) => handleInputChange('deadline', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
+                disabled={submitting}
               />
             </div>
             <div>
@@ -346,13 +391,13 @@ export default function Assignments() {
               </label>
               <select
                 value={formData.targetAudience}
-                onChange={(e) => setFormData({ 
-                  ...formData, 
-                  targetAudience: e.target.value as 'individual' | 'group' | 'all',
-                  targetIds: [] // Reset target IDs when audience changes
-                })}
+                onChange={(e) => {
+                  handleInputChange('targetAudience', e.target.value);
+                  handleInputChange('targetIds', []); // Reset target IDs when audience changes
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
+                disabled={submitting}
               >
                 <option value="all">All Interns</option>
                 <option value="group">Specific Groups</option>
@@ -374,6 +419,7 @@ export default function Assignments() {
                       checked={formData.targetIds.includes(group.id)}
                       onChange={() => handleTargetToggle(group.id)}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      disabled={submitting}
                     />
                     <span className="text-sm">{group.name}</span>
                   </label>
@@ -395,6 +441,7 @@ export default function Assignments() {
                       checked={formData.targetIds.includes(intern.uid)}
                       onChange={() => handleTargetToggle(intern.uid)}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      disabled={submitting}
                     />
                     <span className="text-sm">{intern.name}</span>
                   </label>
@@ -410,9 +457,11 @@ export default function Assignments() {
             <input
               type="url"
               value={formData.fileUrl}
-              onChange={(e) => setFormData({ ...formData, fileUrl: e.target.value })}
+              onChange={(e) => handleInputChange('fileUrl', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="https://example.com/assignment.pdf"
+              disabled={submitting}
+              autoComplete="off"
             />
           </div>
 
@@ -420,15 +469,13 @@ export default function Assignments() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => {
-                setShowModal(false);
-                resetForm();
-              }}
+              onClick={handleModalClose}
+              disabled={submitting}
             >
               Cancel
             </Button>
-            <Button type="submit">
-              {editingAssignment ? 'Update Assignment' : 'Create Assignment'}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Saving...' : (editingAssignment ? 'Update Assignment' : 'Create Assignment')}
             </Button>
           </div>
         </form>

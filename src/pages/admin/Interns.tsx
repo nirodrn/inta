@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ref, get, push, update, remove } from 'firebase/database';
-import { Users, Plus, Edit, Trash2, Search, GraduationCap, Mail, Phone } from 'lucide-react';
-import { database } from '../../config/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { Users, Plus, Edit, Trash2, Search, GraduationCap } from 'lucide-react';
+import { database, auth } from '../../config/firebase';
 import { Intern } from '../../types';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -15,6 +16,7 @@ export default function Interns() {
   const [showModal, setShowModal] = useState(false);
   const [editingIntern, setEditingIntern] = useState<Intern | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -50,26 +52,91 @@ export default function Interns() {
     }
   };
 
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const internData = {
-        ...formData,
-        gpa: parseFloat(formData.gpa),
-        skills: formData.skills.split(',').map(s => s.trim()).filter(s => s),
-        weaknesses: formData.weaknesses.split(',').map(s => s.trim()).filter(s => s),
-        role: 'intern',
-        createdAt: editingIntern?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+    e.stopPropagation();
+    
+    if (submitting) return;
+    
+    // Validate required fields
+    if (!formData.name.trim()) {
+      toast.error('Name is required');
+      return;
+    }
+    if (!formData.email.trim()) {
+      toast.error('Email is required');
+      return;
+    }
+    if (!formData.university.trim()) {
+      toast.error('University is required');
+      return;
+    }
+    if (!formData.gpa || parseFloat(formData.gpa) < 0 || parseFloat(formData.gpa) > 4) {
+      toast.error('Valid GPA (0-4) is required');
+      return;
+    }
 
+    setSubmitting(true);
+
+    try {
       if (editingIntern) {
+        // Update existing intern
+        const internData = {
+          name: formData.name.trim(),
+          nickname: formData.nickname.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          university: formData.university.trim(),
+          gpa: parseFloat(formData.gpa),
+          skills: formData.skills.split(',').map(s => s.trim()).filter(s => s),
+          weaknesses: formData.weaknesses.split(',').map(s => s.trim()).filter(s => s),
+          role: 'intern',
+          updatedAt: new Date().toISOString(),
+        };
+
         await update(ref(database, `acceptedInterns/${editingIntern.uid}`), internData);
         toast.success('Intern updated successfully!');
       } else {
-        const newRef = push(ref(database, 'acceptedInterns'));
-        await update(newRef, { ...internData, uid: newRef.key });
-        toast.success('Intern added successfully!');
+        // Create new intern
+        const defaultPassword = 'intern123';
+        
+        let userCredential;
+        let newUid = `intern_${Date.now()}`;
+        
+        try {
+          userCredential = await createUserWithEmailAndPassword(auth, formData.email.trim(), defaultPassword);
+          newUid = userCredential.user.uid;
+        } catch (authError: any) {
+          if (authError.code === 'auth/email-already-in-use') {
+            console.log('Email already in use, using generated UID');
+          } else {
+            throw authError;
+          }
+        }
+
+        const internData = {
+          name: formData.name.trim(),
+          nickname: formData.nickname.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          university: formData.university.trim(),
+          gpa: parseFloat(formData.gpa),
+          skills: formData.skills.split(',').map(s => s.trim()).filter(s => s),
+          weaknesses: formData.weaknesses.split(',').map(s => s.trim()).filter(s => s),
+          role: 'intern',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        await update(ref(database, `acceptedInterns/${newUid}`), internData);
+        toast.success(`Intern created successfully! Login credentials - Email: ${formData.email}, Password: ${defaultPassword}`);
       }
 
       resetForm();
@@ -77,7 +144,9 @@ export default function Interns() {
       fetchInterns();
     } catch (error) {
       console.error('Error saving intern:', error);
-      toast.error('Failed to save intern');
+      toast.error('Failed to save intern: ' + (error as any).message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -123,6 +192,13 @@ export default function Interns() {
     setEditingIntern(null);
   };
 
+  const handleModalClose = () => {
+    if (!submitting) {
+      setShowModal(false);
+      resetForm();
+    }
+  };
+
   const filteredInterns = interns.filter(intern =>
     (intern.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
     (intern.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -148,7 +224,7 @@ export default function Interns() {
           <h1 className="text-3xl font-bold text-gray-900">Intern Management</h1>
           <p className="text-gray-600">Manage accepted interns and their profiles</p>
         </div>
-        <Button onClick={() => setShowModal(true)}>
+        <Button onClick={() => setShowModal(true)} disabled={submitting}>
           <Plus className="h-4 w-4 mr-2" />
           Add Intern
         </Button>
@@ -245,10 +321,10 @@ export default function Interns() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Button variant="secondary" size="sm" onClick={() => handleEdit(intern)}>
+                  <Button variant="secondary" size="sm" onClick={() => handleEdit(intern)} disabled={submitting}>
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="danger" size="sm" onClick={() => handleDelete(intern.uid)}>
+                  <Button variant="danger" size="sm" onClick={() => handleDelete(intern.uid)} disabled={submitting}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -271,10 +347,7 @@ export default function Interns() {
       {/* Intern Modal */}
       <Modal
         isOpen={showModal}
-        onClose={() => {
-          setShowModal(false);
-          resetForm();
-        }}
+        onClose={handleModalClose}
         title={editingIntern ? 'Edit Intern' : 'Add Intern'}
         size="lg"
       >
@@ -287,9 +360,12 @@ export default function Interns() {
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => handleInputChange('name', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter full name"
                 required
+                disabled={submitting}
+                autoComplete="off"
               />
             </div>
             <div>
@@ -299,8 +375,11 @@ export default function Interns() {
               <input
                 type="text"
                 value={formData.nickname}
-                onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+                onChange={(e) => handleInputChange('nickname', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter nickname"
+                disabled={submitting}
+                autoComplete="off"
               />
             </div>
           </div>
@@ -313,9 +392,12 @@ export default function Interns() {
               <input
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) => handleInputChange('email', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter email address"
                 required
+                disabled={!!editingIntern || submitting}
+                autoComplete="off"
               />
             </div>
             <div>
@@ -325,8 +407,11 @@ export default function Interns() {
               <input
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter phone number"
+                disabled={submitting}
+                autoComplete="off"
               />
             </div>
           </div>
@@ -339,9 +424,12 @@ export default function Interns() {
               <input
                 type="text"
                 value={formData.university}
-                onChange={(e) => setFormData({ ...formData, university: e.target.value })}
+                onChange={(e) => handleInputChange('university', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter university name"
                 required
+                disabled={submitting}
+                autoComplete="off"
               />
             </div>
             <div>
@@ -354,9 +442,11 @@ export default function Interns() {
                 min="0"
                 max="4"
                 value={formData.gpa}
-                onChange={(e) => setFormData({ ...formData, gpa: e.target.value })}
+                onChange={(e) => handleInputChange('gpa', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter GPA (0-4)"
                 required
+                disabled={submitting}
               />
             </div>
           </div>
@@ -368,9 +458,11 @@ export default function Interns() {
             <input
               type="text"
               value={formData.skills}
-              onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
+              onChange={(e) => handleInputChange('skills', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="React, Node.js, Python, etc."
+              disabled={submitting}
+              autoComplete="off"
             />
           </div>
 
@@ -381,9 +473,11 @@ export default function Interns() {
             <input
               type="text"
               value={formData.weaknesses}
-              onChange={(e) => setFormData({ ...formData, weaknesses: e.target.value })}
+              onChange={(e) => handleInputChange('weaknesses', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Communication, Time management, etc."
+              disabled={submitting}
+              autoComplete="off"
             />
           </div>
 
@@ -391,15 +485,13 @@ export default function Interns() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => {
-                setShowModal(false);
-                resetForm();
-              }}
+              onClick={handleModalClose}
+              disabled={submitting}
             >
               Cancel
             </Button>
-            <Button type="submit">
-              {editingIntern ? 'Update Intern' : 'Add Intern'}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Saving...' : (editingIntern ? 'Update Intern' : 'Add Intern')}
             </Button>
           </div>
         </form>

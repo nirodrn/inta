@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function login(email: string, password: string) {
     try {
+      setLoading(true);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
@@ -47,6 +48,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Login error:', error);
       toast.error('Login failed: ' + (error.message || 'Unknown error'));
       throw error;
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -79,20 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
-      // Check in preInterviewInterns collection
-      const preInterviewRef = ref(database, `preInterviewInterns/${uid}`);
-      const preInterviewSnapshot = await get(preInterviewRef);
-      if (preInterviewSnapshot.exists()) {
-        const preInterviewData = preInterviewSnapshot.val();
-        console.log('Found pre-interview user:', preInterviewData);
-        return { 
-          uid, 
-          role: 'pre-interview',
-          ...preInterviewData 
-        };
-      }
-
-      // Check in acceptedInterns collection
+      // Check in acceptedInterns collection (PRIORITY for interns)
       const internRef = ref(database, `acceptedInterns/${uid}`);
       const internSnapshot = await get(internRef);
       if (internSnapshot.exists()) {
@@ -118,6 +108,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
+      // Check in preInterviewInterns collection (LAST PRIORITY)
+      const preInterviewRef = ref(database, `preInterviewInterns/${uid}`);
+      const preInterviewSnapshot = await get(preInterviewRef);
+      if (preInterviewSnapshot.exists()) {
+        const preInterviewData = preInterviewSnapshot.val();
+        console.log('Found pre-interview user:', preInterviewData);
+        
+        // If they have been selected as intern, don't allow pre-interview access
+        if (preInterviewData.status === 'selected') {
+          console.log('User has been selected as intern but not moved to acceptedInterns yet');
+          return null; // Force them to contact admin
+        }
+        
+        return { 
+          uid, 
+          role: 'pre-interview',
+          ...preInterviewData 
+        };
+      }
+
       console.log('No user data found for UID:', uid);
       return null;
     } catch (error) {
@@ -127,21 +137,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    let isMounted = true;
+    
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!isMounted) return;
+      
       console.log('Auth state changed:', user?.uid);
       setFirebaseUser(user);
       
       if (user) {
-        const userData = await fetchUserData(user.uid);
-        setCurrentUser(userData);
+        try {
+          const userData = await fetchUserData(user.uid);
+          if (isMounted) {
+            setCurrentUser(userData);
+          }
+        } catch (error) {
+          console.error('Error in auth state change:', error);
+          if (isMounted) {
+            setCurrentUser(null);
+          }
+        }
       } else {
-        setCurrentUser(null);
+        if (isMounted) {
+          setCurrentUser(null);
+        }
       }
       
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     });
 
-    return unsubscribe;
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const value = {

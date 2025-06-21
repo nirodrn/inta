@@ -22,6 +22,12 @@ import InternGroup from './pages/intern/Group';
 import InternProgress from './pages/intern/Progress';
 import InternFeedback from './pages/intern/Feedback';
 import InternProfile from './pages/intern/Profile';
+import SupervisorDashboard from './pages/supervisor/Dashboard';
+import SupervisorInterns from './pages/supervisor/Interns';
+import SupervisorAssignments from './pages/supervisor/Assignments';
+import SupervisorMeetings from './pages/supervisor/Meetings';
+import SupervisorReports from './pages/supervisor/Reports';
+import SupervisorProfile from './pages/supervisor/Profile';
 import LoadingSpinner from './components/UI/LoadingSpinner';
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
@@ -234,6 +240,56 @@ function AppRoutes() {
                 element={
                   <ProtectedRoute allowedRoles={['intern']}>
                     <InternProfile />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Supervisor Routes */}
+              <Route
+                path="/supervisor"
+                element={
+                  <ProtectedRoute allowedRoles={['supervisor']}>
+                    <SupervisorDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/supervisor/interns"
+                element={
+                  <ProtectedRoute allowedRoles={['supervisor']}>
+                    <SupervisorInterns />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/supervisor/assignments"
+                element={
+                  <ProtectedRoute allowedRoles={['supervisor']}>
+                    <SupervisorAssignments />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/supervisor/meetings"
+                element={
+                  <ProtectedRoute allowedRoles={['supervisor']}>
+                    <SupervisorMeetings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/supervisor/reports"
+                element={
+                  <ProtectedRoute allowedRoles={['supervisor']}>
+                    <SupervisorReports />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/supervisor/profile"
+                element={
+                  <ProtectedRoute allowedRoles={['supervisor']}>
+                    <SupervisorProfile />
                   </ProtectedRoute>
                 }
               />

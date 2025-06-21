@@ -48,9 +48,23 @@ export default function PreInterns() {
   const handleSelectIntern = async (intern: PreInterviewIntern) => {
     try {
       // Create Firebase Auth account for the intern with a default password
-      const defaultPassword = 'intern123'; // In production, generate a secure password
-      const userCredential = await createUserWithEmailAndPassword(auth, intern.email, defaultPassword);
-      const newUid = userCredential.user.uid;
+      const defaultPassword = 'intern123';
+      
+      let userCredential;
+      let newUid = intern.uid; // Use existing UID if auth creation fails
+      
+      try {
+        userCredential = await createUserWithEmailAndPassword(auth, intern.email, defaultPassword);
+        newUid = userCredential.user.uid;
+        console.log('Created new Firebase Auth user with UID:', newUid);
+      } catch (authError: any) {
+        if (authError.code === 'auth/email-already-in-use') {
+          console.log('Email already in use, using existing UID:', intern.uid);
+          // Use the existing UID from pre-interview collection
+        } else {
+          throw authError;
+        }
+      }
 
       // Create intern record in acceptedInterns
       const internData = {
@@ -68,17 +82,27 @@ export default function PreInterns() {
         nickname: '',
       };
 
-      const updates = {
+      // Update both collections
+      const updates: any = {
         [`acceptedInterns/${newUid}`]: internData,
         [`preInterviewInterns/${intern.uid}/status`]: 'selected',
       };
       
+      // If we created a new UID, also remove from pre-interview and add to new location
+      if (newUid !== intern.uid) {
+        updates[`preInterviewInterns/${newUid}`] = {
+          ...intern,
+          status: 'selected'
+        };
+      }
+      
       await update(ref(database), updates);
+      
       toast.success(`Intern selected successfully! Login credentials - Email: ${intern.email}, Password: ${defaultPassword}`);
       fetchPreInterns();
     } catch (error) {
       console.error('Error selecting intern:', error);
-      toast.error('Failed to select intern');
+      toast.error('Failed to select intern: ' + (error as any).message);
     }
   };
 

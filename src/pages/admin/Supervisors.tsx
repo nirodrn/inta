@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ref, get, push, update, remove } from 'firebase/database';
-import { UserCheck, Plus, Edit, Trash2, Search, Mail, Phone, Building } from 'lucide-react';
-import { database } from '../../config/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { UserCheck, Plus, Edit, Trash2, Search } from 'lucide-react';
+import { database, auth } from '../../config/firebase';
 import { Supervisor } from '../../types';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
@@ -15,6 +16,7 @@ export default function Supervisors() {
   const [showModal, setShowModal] = useState(false);
   const [editingSupervisor, setEditingSupervisor] = useState<Supervisor | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -47,23 +49,77 @@ export default function Supervisors() {
     }
   };
 
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const supervisorData = {
-        ...formData,
-        role: 'supervisor',
-        createdAt: editingSupervisor?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+    e.stopPropagation();
+    
+    if (submitting) return;
+    
+    // Validate required fields
+    if (!formData.name.trim()) {
+      toast.error('Name is required');
+      return;
+    }
+    if (!formData.email.trim()) {
+      toast.error('Email is required');
+      return;
+    }
 
+    setSubmitting(true);
+    
+    try {
       if (editingSupervisor) {
+        // Update existing supervisor
+        const supervisorData = {
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          department: formData.department.trim(),
+          notes: formData.notes.trim(),
+          role: 'supervisor',
+          updatedAt: new Date().toISOString(),
+        };
+
         await update(ref(database, `supervisors/${editingSupervisor.uid}`), supervisorData);
         toast.success('Supervisor updated successfully!');
       } else {
-        const newRef = push(ref(database, 'supervisors'));
-        await update(newRef, { ...supervisorData, uid: newRef.key });
-        toast.success('Supervisor added successfully!');
+        // Create new supervisor
+        const defaultPassword = 'supervisor123';
+        
+        let userCredential;
+        let newUid = `supervisor_${Date.now()}`;
+        
+        try {
+          userCredential = await createUserWithEmailAndPassword(auth, formData.email.trim(), defaultPassword);
+          newUid = userCredential.user.uid;
+        } catch (authError: any) {
+          if (authError.code === 'auth/email-already-in-use') {
+            console.log('Email already in use, using generated UID');
+          } else {
+            throw authError;
+          }
+        }
+
+        const supervisorData = {
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          department: formData.department.trim(),
+          notes: formData.notes.trim(),
+          role: 'supervisor',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        await update(ref(database, `supervisors/${newUid}`), supervisorData);
+        toast.success(`Supervisor created successfully! Login credentials - Email: ${formData.email}, Password: ${defaultPassword}`);
       }
 
       resetForm();
@@ -71,15 +127,17 @@ export default function Supervisors() {
       fetchSupervisors();
     } catch (error) {
       console.error('Error saving supervisor:', error);
-      toast.error('Failed to save supervisor');
+      toast.error('Failed to save supervisor: ' + (error as any).message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleEdit = (supervisor: Supervisor) => {
     setEditingSupervisor(supervisor);
     setFormData({
-      name: supervisor.name,
-      email: supervisor.email,
+      name: supervisor.name || '',
+      email: supervisor.email || '',
       phone: supervisor.phone || '',
       department: supervisor.department || '',
       notes: supervisor.notes || '',
@@ -111,9 +169,16 @@ export default function Supervisors() {
     setEditingSupervisor(null);
   };
 
+  const handleModalClose = () => {
+    if (!submitting) {
+      setShowModal(false);
+      resetForm();
+    }
+  };
+
   const filteredSupervisors = supervisors.filter(supervisor =>
-    supervisor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supervisor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    supervisor.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    supervisor.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (supervisor.department && supervisor.department.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -136,7 +201,7 @@ export default function Supervisors() {
           <h1 className="text-3xl font-bold text-gray-900">Supervisor Management</h1>
           <p className="text-gray-600">Manage supervisors and their information</p>
         </div>
-        <Button onClick={() => setShowModal(true)}>
+        <Button onClick={() => setShowModal(true)} disabled={submitting}>
           <Plus className="h-4 w-4 mr-2" />
           Add Supervisor
         </Button>
@@ -204,10 +269,10 @@ export default function Supervisors() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Button variant="secondary" size="sm" onClick={() => handleEdit(supervisor)}>
+                  <Button variant="secondary" size="sm" onClick={() => handleEdit(supervisor)} disabled={submitting}>
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="danger" size="sm" onClick={() => handleDelete(supervisor.uid)}>
+                  <Button variant="danger" size="sm" onClick={() => handleDelete(supervisor.uid)} disabled={submitting}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -230,10 +295,7 @@ export default function Supervisors() {
       {/* Supervisor Modal */}
       <Modal
         isOpen={showModal}
-        onClose={() => {
-          setShowModal(false);
-          resetForm();
-        }}
+        onClose={handleModalClose}
         title={editingSupervisor ? 'Edit Supervisor' : 'Add Supervisor'}
         size="lg"
       >
@@ -245,9 +307,12 @@ export default function Supervisors() {
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => handleInputChange('name', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter full name"
               required
+              disabled={submitting}
+              autoComplete="off"
             />
           </div>
 
@@ -259,9 +324,12 @@ export default function Supervisors() {
               <input
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) => handleInputChange('email', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter email address"
                 required
+                disabled={!!editingSupervisor || submitting}
+                autoComplete="off"
               />
             </div>
             <div>
@@ -271,8 +339,11 @@ export default function Supervisors() {
               <input
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter phone number"
+                disabled={submitting}
+                autoComplete="off"
               />
             </div>
           </div>
@@ -284,9 +355,11 @@ export default function Supervisors() {
             <input
               type="text"
               value={formData.department}
-              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+              onChange={(e) => handleInputChange('department', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="e.g., Software Development, HR, etc."
+              disabled={submitting}
+              autoComplete="off"
             />
           </div>
 
@@ -296,10 +369,11 @@ export default function Supervisors() {
             </label>
             <textarea
               value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              onChange={(e) => handleInputChange('notes', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows={3}
               placeholder="Additional notes about the supervisor..."
+              disabled={submitting}
             />
           </div>
 
@@ -307,15 +381,13 @@ export default function Supervisors() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => {
-                setShowModal(false);
-                resetForm();
-              }}
+              onClick={handleModalClose}
+              disabled={submitting}
             >
               Cancel
             </Button>
-            <Button type="submit">
-              {editingSupervisor ? 'Update Supervisor' : 'Add Supervisor'}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Saving...' : (editingSupervisor ? 'Update Supervisor' : 'Add Supervisor')}
             </Button>
           </div>
         </form>

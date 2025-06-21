@@ -73,9 +73,23 @@ export default function Groups() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.name.trim()) {
+      toast.error('Group name is required');
+      return;
+    }
+    if (!formData.supervisorId) {
+      toast.error('Supervisor is required');
+      return;
+    }
+
     try {
       const groupData = {
-        ...formData,
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        supervisorId: formData.supervisorId,
+        internIds: formData.internIds,
         createdAt: editingGroup?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -93,7 +107,7 @@ export default function Groups() {
       fetchData();
     } catch (error) {
       console.error('Error saving group:', error);
-      toast.error('Failed to save group');
+      toast.error('Failed to save group: ' + (error as any).message);
     }
   };
 
@@ -289,6 +303,7 @@ export default function Groups() {
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter group name"
               required
             />
           </div>
