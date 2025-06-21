@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ref, get, update } from 'firebase/database';
-import { User, Mail, Phone, GraduationCap, Edit, Save, X } from 'lucide-react';
+import { User, Mail, Phone, GraduationCap, Edit, Save, X, Award } from 'lucide-react';
 import { database } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Intern } from '../../types';
@@ -23,6 +23,7 @@ export default function InternProfile() {
     gpa: '',
     skills: '',
     weaknesses: '',
+    batch: '',
   });
 
   useEffect(() => {
@@ -46,6 +47,7 @@ export default function InternProfile() {
           gpa: profileData.gpa?.toString() || '',
           skills: profileData.skills?.join(', ') || '',
           weaknesses: profileData.weaknesses?.join(', ') || '',
+          batch: profileData.batch || '',
         });
       }
     } catch (error) {
@@ -88,6 +90,7 @@ export default function InternProfile() {
         gpa: profile.gpa?.toString() || '',
         skills: profile.skills?.join(', ') || '',
         weaknesses: profile.weaknesses?.join(', ') || '',
+        batch: (profile as any).batch || '',
       });
     }
     setEditing(false);
@@ -179,21 +182,19 @@ export default function InternProfile() {
                   profile.name
                 )}
               </h2>
-              {(profile.nickname || editing) && (
-                <p className="text-gray-600">
-                  "{editing ? (
-                    <input
-                      type="text"
-                      value={formData.nickname}
-                      onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-                      className="bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500"
-                      placeholder="Nickname"
-                    />
-                  ) : (
-                    profile.nickname
-                  )}"
-                </p>
-              )}
+              <p className="text-gray-600">
+                "{editing ? (
+                  <input
+                    type="text"
+                    value={formData.nickname}
+                    onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+                    className="bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500"
+                    placeholder="Nickname"
+                  />
+                ) : (
+                  profile.nickname || 'No nickname set'
+                )}"
+              </p>
               <p className="text-sm text-gray-500">Intern</p>
             </div>
           </div>
@@ -262,7 +263,8 @@ export default function InternProfile() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                GPA
+                <Award className="h-4 w-4 inline mr-2" />
+                Grade
               </label>
               {editing ? (
                 <input
@@ -276,6 +278,23 @@ export default function InternProfile() {
                 />
               ) : (
                 <p className="text-gray-900">{profile.gpa}</p>
+              )}
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Batch
+              </label>
+              {editing ? (
+                <input
+                  type="text"
+                  value={formData.batch}
+                  onChange={(e) => setFormData({ ...formData, batch: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., 2024-A, Batch 15, etc."
+                />
+              ) : (
+                <p className="text-gray-900">{(profile as any).batch || 'Not assigned'}</p>
               )}
             </div>
           </div>

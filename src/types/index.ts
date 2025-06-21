@@ -52,6 +52,7 @@ export interface Intern {
   supervisorId?: string;
   skills?: string[];
   weaknesses?: string[];
+  batch?: string;
   createdAt: string;
   updatedAt?: string;
 }

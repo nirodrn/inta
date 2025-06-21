@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ref, get } from 'firebase/database';
-import { Users, UserCheck, GraduationCap, Mail, Phone, MessageSquare } from 'lucide-react';
+import { Users, UserCheck, GraduationCap, MessageSquare } from 'lucide-react';
 import { database } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { Group, Intern, Supervisor } from '../../types';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
 
 export default function InternGroup() {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [group, setGroup] = useState<Group | null>(null);
   const [groupMembers, setGroupMembers] = useState<Intern[]>([]);
+  const [memberGrades, setMemberGrades] = useState<{ [key: string]: number }>({});
   const [supervisor, setSupervisor] = useState<Supervisor | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -23,10 +26,11 @@ export default function InternGroup() {
 
   const fetchGroupData = async () => {
     try {
-      const [groupsSnap, internsSnap, supervisorsSnap] = await Promise.all([
+      const [groupsSnap, internsSnap, supervisorsSnap, gradesSnap] = await Promise.all([
         get(ref(database, 'groups')),
         get(ref(database, 'acceptedInterns')),
         get(ref(database, 'supervisors')),
+        get(ref(database, 'grades')),
       ]);
 
       let userGroup: Group | null = null;
@@ -54,6 +58,26 @@ export default function InternGroup() {
             })
             .filter(Boolean) as Intern[];
           setGroupMembers(members);
+
+          // Calculate real grades for each member
+          const grades: { [key: string]: number } = {};
+          if (gradesSnap.exists()) {
+            const gradesData = gradesSnap.val();
+            
+            members.forEach(member => {
+              const memberGrades = Object.values(gradesData).filter((grade: any) => grade.internId === member.uid);
+              
+              if (memberGrades.length > 0) {
+                const totalGradePoints = memberGrades.reduce((sum: number, grade: any) => {
+                  return sum + ((grade.grade / grade.maxGrade) * 100);
+                }, 0);
+                grades[member.uid] = Math.round(totalGradePoints / memberGrades.length);
+              }
+              // If no grades exist, don't show any grade (no fallback to GPA)
+            });
+          }
+          
+          setMemberGrades(grades);
         }
 
         // Get supervisor
@@ -70,6 +94,21 @@ export default function InternGroup() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenChat = () => {
+    navigate('/intern/group-chat');
+  };
+
+  const getDisplayName = (member: Intern) => {
+    if (member.nickname && member.nickname.trim()) {
+      return member.nickname;
+    }
+    
+    // Find unnamed member number
+    const unnamedMembers = groupMembers.filter(m => !m.nickname || !m.nickname.trim());
+    const memberIndex = unnamedMembers.findIndex(m => m.uid === member.uid);
+    return `Unnamed Member ${memberIndex + 1}`;
   };
 
   if (loading) {
@@ -111,6 +150,10 @@ export default function InternGroup() {
           <h1 className="text-3xl font-bold text-gray-900">My Group</h1>
           <p className="text-gray-600">Your group information and members</p>
         </div>
+        <Button onClick={handleOpenChat}>
+          <MessageSquare className="h-4 w-4 mr-2" />
+          Group Chat
+        </Button>
       </motion.div>
 
       {/* Group Overview */}
@@ -170,18 +213,6 @@ export default function InternGroup() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
-                {supervisor.email && (
-                  <Button variant="secondary" size="sm">
-                    <Mail className="h-4 w-4 mr-2" />
-                    Email
-                  </Button>
-                )}
-                <Button variant="secondary" size="sm">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Message
-                </Button>
-              </div>
             </div>
           </Card>
         </motion.div>
@@ -195,89 +226,66 @@ export default function InternGroup() {
       >
         <h3 className="text-xl font-semibold text-gray-900 mb-4">Group Members</h3>
         <div className="grid gap-4">
-          {groupMembers.map((member, index) => (
-            <motion.div
-              key={member.uid}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 * index }}
-            >
-              <Card className={`p-6 ${member.uid === currentUser?.uid ? 'ring-2 ring-blue-500' : ''}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                      <GraduationCap className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <h4 className="text-lg font-semibold text-gray-900">{member.name}</h4>
-                        {member.uid === currentUser?.uid && (
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
-                            You
-                          </span>
-                        )}
+          {groupMembers.map((member, index) => {
+            const displayName = getDisplayName(member);
+            const grade = memberGrades[member.uid];
+            
+            return (
+              <motion.div
+                key={member.uid}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 * index }}
+              >
+                <Card className={`p-6 ${member.uid === currentUser?.uid ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                        <GraduationCap className="h-6 w-6 text-white" />
                       </div>
-                      {member.nickname && (
-                        <p className="text-sm text-gray-600">"{member.nickname}"</p>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <h4 className="text-lg font-semibold text-gray-900">{displayName}</h4>
+                          {member.uid === currentUser?.uid && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                              You
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600">{member.university}</p>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      {grade !== undefined ? (
+                        <div className="text-lg font-semibold text-gray-900">Grade: {grade}%</div>
+                      ) : (
+                        <div className="text-sm text-gray-500">No grades yet</div>
                       )}
-                      <p className="text-sm text-gray-600">{member.university}</p>
+                      {member.skills && member.skills.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2 justify-end">
+                          {member.skills.slice(0, 3).map((skill, skillIndex) => (
+                            <span
+                              key={skillIndex}
+                              className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                          {member.skills.length > 3 && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                              +{member.skills.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  <div className="text-right">
-                    <div className="text-lg font-semibold text-gray-900">GPA: {member.gpa}</div>
-                    {member.skills && member.skills.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2 justify-end">
-                        {member.skills.slice(0, 3).map((skill, skillIndex) => (
-                          <span
-                            key={skillIndex}
-                            className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                        {member.skills.length > 3 && (
-                          <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                            +{member.skills.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
+                </Card>
+              </motion.div>
+            );
+          })}
         </div>
-      </motion.div>
-
-      {/* Group Actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Group Actions</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button variant="secondary" className="flex flex-col items-center p-4 h-auto">
-              <MessageSquare className="h-6 w-6 mb-2" />
-              <span>Group Chat</span>
-            </Button>
-            <Button variant="secondary" className="flex flex-col items-center p-4 h-auto">
-              <Users className="h-6 w-6 mb-2" />
-              <span>Schedule Meeting</span>
-            </Button>
-            <Button variant="secondary" className="flex flex-col items-center p-4 h-auto">
-              <GraduationCap className="h-6 w-6 mb-2" />
-              <span>Share Resources</span>
-            </Button>
-            <Button variant="secondary" className="flex flex-col items-center p-4 h-auto">
-              <UserCheck className="h-6 w-6 mb-2" />
-              <span>Contact Supervisor</span>
-            </Button>
-          </div>
-        </Card>
       </motion.div>
     </div>
   );

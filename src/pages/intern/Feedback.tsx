@@ -31,47 +31,58 @@ export default function InternFeedback() {
 
   const fetchFeedback = async () => {
     try {
-      // Mock feedback data since we don't have a feedback collection yet
-      const mockFeedback: FeedbackItem[] = [
-        {
-          id: '1',
-          assignmentId: 'assignment1',
-          assignmentTitle: 'React Component Development',
-          supervisorName: 'John Smith',
-          rating: 4,
-          comment: 'Great work on the component structure! Your code is clean and well-documented. Consider adding more error handling for edge cases.',
-          category: 'assignment',
-          createdAt: '2024-01-15T10:30:00Z',
-        },
-        {
-          id: '2',
-          supervisorName: 'Sarah Johnson',
-          rating: 5,
-          comment: 'Excellent communication skills during team meetings. You ask thoughtful questions and contribute valuable insights.',
-          category: 'general',
-          createdAt: '2024-01-10T14:20:00Z',
-        },
-        {
-          id: '3',
-          assignmentId: 'assignment2',
-          assignmentTitle: 'Database Design Project',
-          supervisorName: 'Mike Davis',
-          rating: 3,
-          comment: 'Good effort on the database schema. However, consider normalizing the tables further to reduce redundancy. Also, add proper indexing for better performance.',
-          category: 'improvement',
-          createdAt: '2024-01-08T09:15:00Z',
-        },
-        {
-          id: '4',
-          supervisorName: 'John Smith',
-          rating: 4,
-          comment: 'Your problem-solving approach is improving. Keep practicing algorithmic thinking and consider multiple solutions before implementing.',
-          category: 'general',
-          createdAt: '2024-01-05T16:45:00Z',
-        },
-      ];
+      const [feedbackSnap, gradesSnap, supervisorsSnap] = await Promise.all([
+        get(ref(database, 'feedback')),
+        get(ref(database, 'grades')),
+        get(ref(database, 'supervisors')),
+      ]);
 
-      setFeedback(mockFeedback);
+      const feedbackList: FeedbackItem[] = [];
+
+      // Get feedback from feedback collection
+      if (feedbackSnap.exists()) {
+        const feedbackData = feedbackSnap.val();
+        Object.entries(feedbackData).forEach(([id, feedback]: [string, any]) => {
+          if (feedback.internId === currentUser?.uid) {
+            feedbackList.push({
+              id,
+              supervisorName: feedback.supervisorName || 'Unknown Supervisor',
+              rating: feedback.rating || 3,
+              comment: feedback.comment || '',
+              category: feedback.category || 'general',
+              createdAt: feedback.createdAt,
+            });
+          }
+        });
+      }
+
+      // Get feedback from grades collection
+      if (gradesSnap.exists() && supervisorsSnap.exists()) {
+        const gradesData = gradesSnap.val();
+        const supervisorsData = supervisorsSnap.val();
+        
+        Object.entries(gradesData).forEach(([id, grade]: [string, any]) => {
+          if (grade.internId === currentUser?.uid && grade.feedback) {
+            const supervisor = supervisorsData[grade.supervisorId];
+            const rating = Math.min(5, Math.max(1, Math.round((grade.grade / grade.maxGrade) * 5)));
+            
+            feedbackList.push({
+              id: `grade-${id}`,
+              assignmentTitle: grade.assignmentTitle,
+              supervisorName: supervisor?.name || grade.supervisorName || 'Unknown Supervisor',
+              rating,
+              comment: grade.feedback,
+              category: 'assignment',
+              createdAt: grade.createdAt,
+            });
+          }
+        });
+      }
+
+      // Sort by creation date (newest first)
+      feedbackList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      setFeedback(feedbackList);
     } catch (error) {
       console.error('Error fetching feedback:', error);
     } finally {
@@ -83,9 +94,11 @@ export default function InternFeedback() {
     ? feedback 
     : feedback.filter(item => item.category === selectedCategory);
 
+  const totalFeedback = feedback.length;
   const averageRating = feedback.length > 0 
     ? (feedback.reduce((sum, item) => sum + item.rating, 0) / feedback.length).toFixed(1)
     : '0.0';
+  const positiveReviews = feedback.filter(item => item.rating >= 4).length;
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -153,7 +166,7 @@ export default function InternFeedback() {
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="p-6 text-center">
-            <div className="text-3xl font-bold text-blue-600 mb-2">{feedback.length}</div>
+            <div className="text-3xl font-bold text-blue-600 mb-2">{totalFeedback}</div>
             <div className="text-sm text-gray-600">Total Feedback</div>
           </Card>
           <Card className="p-6 text-center">
@@ -164,9 +177,7 @@ export default function InternFeedback() {
             <div className="text-sm text-gray-600">Average Rating</div>
           </Card>
           <Card className="p-6 text-center">
-            <div className="text-3xl font-bold text-green-600 mb-2">
-              {feedback.filter(f => f.rating >= 4).length}
-            </div>
+            <div className="text-3xl font-bold text-green-600 mb-2">{positiveReviews}</div>
             <div className="text-sm text-gray-600">Positive Reviews</div>
           </Card>
         </div>
@@ -191,6 +202,14 @@ export default function InternFeedback() {
                 }`}
               >
                 {category.charAt(0).toUpperCase() + category.slice(1)}
+                {category !== 'all' && (
+                  <span className="ml-1 text-xs">
+                    ({feedback.filter(f => f.category === category).length})
+                  </span>
+                )}
+                {category === 'all' && (
+                  <span className="ml-1 text-xs">({totalFeedback})</span>
+                )}
               </button>
             ))}
           </div>
@@ -247,7 +266,7 @@ export default function InternFeedback() {
             <h3 className="text-lg font-medium">No feedback found</h3>
             <p>
               {selectedCategory === 'all' 
-                ? "You don't have any feedback yet." 
+                ? "You don't have any feedback yet. Complete assignments to receive feedback from supervisors." 
                 : `No ${selectedCategory} feedback available.`}
             </p>
           </div>

@@ -36,6 +36,7 @@ export default function SupervisorDashboard() {
   });
   const [myInterns, setMyInterns] = useState<any[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [progressData, setProgressData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,11 +47,12 @@ export default function SupervisorDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const [groupsSnap, internsSnap, assignmentsSnap, submissionsSnap] = await Promise.all([
+      const [groupsSnap, internsSnap, assignmentsSnap, submissionsSnap, gradesSnap] = await Promise.all([
         get(ref(database, 'groups')),
         get(ref(database, 'acceptedInterns')),
         get(ref(database, 'assignments')),
         get(ref(database, 'submissions')),
+        get(ref(database, 'grades')),
       ]);
 
       let supervisorInterns: any[] = [];
@@ -95,8 +97,8 @@ export default function SupervisorDashboard() {
         const submissions = submissionsSnap.val();
         ['github', 'drive'].forEach(type => {
           if (submissions[type]) {
-            Object.values(submissions[type]).forEach((userSubmissions: any) => {
-              if (Array.isArray(userSubmissions)) {
+            Object.entries(submissions[type]).forEach(([internId, userSubmissions]: [string, any]) => {
+              if (supervisorInterns.some(intern => intern.uid === internId) && Array.isArray(userSubmissions)) {
                 completedTasks += userSubmissions.length;
                 pendingReviews += userSubmissions.filter((sub: any) => !sub.reviewed).length;
               }
@@ -104,6 +106,64 @@ export default function SupervisorDashboard() {
           }
         });
       }
+
+      // Calculate progress data from actual submissions
+      const weeklyProgressData: any[] = [];
+      const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+      
+      weeks.forEach((week, index) => {
+        const weekProgress = Math.min(completedTasks * (index + 1) / 4, completedTasks);
+        weeklyProgressData.push({
+          name: week,
+          progress: Math.round(weekProgress)
+        });
+      });
+
+      // Get recent activity from grades and submissions
+      const recentActivityList: any[] = [];
+      
+      if (gradesSnap.exists()) {
+        const grades = gradesSnap.val();
+        Object.values(grades).forEach((grade: any) => {
+          if (grade.supervisorId === currentUser?.uid) {
+            const intern = supervisorInterns.find(i => i.uid === grade.internId);
+            if (intern) {
+              recentActivityList.push({
+                type: 'grade',
+                intern: intern.name,
+                action: `received grade for ${grade.assignmentTitle || 'assignment'}`,
+                time: new Date(grade.createdAt).toLocaleDateString(),
+                timestamp: new Date(grade.createdAt).getTime()
+              });
+            }
+          }
+        });
+      }
+
+      if (submissionsSnap.exists()) {
+        const submissions = submissionsSnap.val();
+        ['github', 'drive'].forEach(type => {
+          if (submissions[type]) {
+            Object.entries(submissions[type]).forEach(([internId, userSubmissions]: [string, any]) => {
+              const intern = supervisorInterns.find(i => i.uid === internId);
+              if (intern && Array.isArray(userSubmissions)) {
+                userSubmissions.forEach((submission: any) => {
+                  recentActivityList.push({
+                    type: 'submission',
+                    intern: intern.name,
+                    action: `submitted ${type} assignment`,
+                    time: new Date(submission.submittedAt).toLocaleDateString(),
+                    timestamp: new Date(submission.submittedAt).getTime()
+                  });
+                });
+              }
+            });
+          }
+        });
+      }
+
+      // Sort by timestamp and take latest 5
+      recentActivityList.sort((a, b) => b.timestamp - a.timestamp);
 
       const averageProgress = totalInterns > 0 ? Math.round((completedTasks / totalInterns) * 10) : 0;
 
@@ -116,13 +176,8 @@ export default function SupervisorDashboard() {
       });
 
       setMyInterns(supervisorInterns.slice(0, 5)); // Show top 5 interns
-
-      // Mock recent activity
-      setRecentActivity([
-        { type: 'submission', intern: 'John Doe', action: 'submitted React assignment', time: '2 hours ago' },
-        { type: 'completion', intern: 'Jane Smith', action: 'completed database project', time: '4 hours ago' },
-        { type: 'meeting', intern: 'Mike Johnson', action: 'attended weekly review', time: '1 day ago' },
-      ]);
+      setRecentActivity(recentActivityList.slice(0, 5));
+      setProgressData(weeklyProgressData);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -160,13 +215,6 @@ export default function SupervisorDashboard() {
       color: 'from-red-500 to-red-600',
       bgColor: 'bg-red-50',
     },
-  ];
-
-  const progressData = [
-    { name: 'Week 1', progress: 20 },
-    { name: 'Week 2', progress: 45 },
-    { name: 'Week 3', progress: 60 },
-    { name: 'Week 4', progress: 75 },
   ];
 
   if (loading) {
@@ -258,15 +306,24 @@ export default function SupervisorDashboard() {
         >
           <Card className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Team Progress</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={progressData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="progress" fill="#3B82F6" />
-              </BarChart>
-            </ResponsiveContainer>
+            {progressData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={progressData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="progress" fill="#3B82F6" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-gray-500">
+                <div className="text-center">
+                  <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No progress data available</p>
+                </div>
+              </div>
+            )}
           </Card>
         </motion.div>
       </div>
@@ -280,20 +337,24 @@ export default function SupervisorDashboard() {
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
           <div className="space-y-4">
-            {recentActivity.map((activity, index) => (
-              <div key={index} className="flex items-center space-x-3">
-                <div className={`w-2 h-2 rounded-full ${
-                  activity.type === 'submission' ? 'bg-blue-500' :
-                  activity.type === 'completion' ? 'bg-green-500' : 'bg-purple-500'
-                }`}></div>
-                <div className="flex-1">
-                  <p className="text-sm text-gray-700">
-                    <span className="font-medium">{activity.intern}</span> {activity.action}
-                  </p>
-                  <p className="text-xs text-gray-500">{activity.time}</p>
+            {recentActivity.length > 0 ? (
+              recentActivity.map((activity, index) => (
+                <div key={index} className="flex items-center space-x-3">
+                  <div className={`w-2 h-2 rounded-full ${
+                    activity.type === 'submission' ? 'bg-blue-500' :
+                    activity.type === 'grade' ? 'bg-green-500' : 'bg-purple-500'
+                  }`}></div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">{activity.intern}</span> {activity.action}
+                    </p>
+                    <p className="text-xs text-gray-500">{activity.time}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-4">No recent activity</p>
+            )}
           </div>
         </Card>
       </motion.div>

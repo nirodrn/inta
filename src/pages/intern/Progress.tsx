@@ -39,17 +39,17 @@ export default function InternProgress() {
 
   const fetchProgressData = async () => {
     try {
-      const [assignmentsSnap, tasksSnap, submissionsSnap, internSnap] = await Promise.all([
+      const [assignmentsSnap, submissionsSnap, gradesSnap, internSnap] = await Promise.all([
         get(ref(database, 'assignments')),
-        get(ref(database, `tasks/${currentUser?.uid}`)),
         get(ref(database, 'submissions')),
+        get(ref(database, 'grades')),
         get(ref(database, `acceptedInterns/${currentUser?.uid}`)),
       ]);
 
       let totalAssignments = 0;
       let completedAssignments = 0;
 
-      // Count assignments
+      // Count assignments assigned to this intern
       if (assignmentsSnap.exists()) {
         const assignments = assignmentsSnap.val();
         Object.values(assignments).forEach((assignment: any) => {
@@ -60,56 +60,97 @@ export default function InternProgress() {
         });
       }
 
-      // Count submissions
+      // Count submissions by this intern
       if (submissionsSnap.exists()) {
         const submissions = submissionsSnap.val();
         ['github', 'drive'].forEach(type => {
           if (submissions[type] && submissions[type][currentUser?.uid]) {
-            completedAssignments += submissions[type][currentUser?.uid].length;
+            const userSubmissions = submissions[type][currentUser?.uid];
+            if (Array.isArray(userSubmissions)) {
+              completedAssignments += userSubmissions.length;
+            }
           }
         });
       }
 
-      let totalTasks = 0;
-      let completedTasks = 0;
-
-      // Count tasks
-      if (tasksSnap.exists()) {
-        const tasks = tasksSnap.val();
-        Object.values(tasks).forEach((task: any) => {
-          totalTasks++;
-          if (task.status === 'completed') {
-            completedTasks++;
-          }
-        });
+      // Calculate average grade from grades collection
+      let averageGrade = 0;
+      if (gradesSnap.exists()) {
+        const grades = gradesSnap.val();
+        const internGrades = Object.values(grades).filter((grade: any) => grade.internId === currentUser?.uid);
+        
+        if (internGrades.length > 0) {
+          const totalGradePoints = internGrades.reduce((sum: number, grade: any) => {
+            return sum + ((grade.grade / grade.maxGrade) * 100);
+          }, 0);
+          averageGrade = Math.round(totalGradePoints / internGrades.length);
+        }
       }
 
       // Get intern skills for progress tracking
       let skillsProgress = {};
       if (internSnap.exists()) {
         const internData = internSnap.val();
-        if (internData.skills) {
+        if (internData.skills && Array.isArray(internData.skills)) {
+          // Calculate skill progress based on assignments and grades
           internData.skills.forEach((skill: string) => {
-            // Mock progress for skills (in real app, this would be calculated based on assignments/feedback)
-            skillsProgress[skill] = Math.floor(Math.random() * 100);
+            // Base progress on average grade and completion rate
+            const baseProgress = averageGrade || 0;
+            const completionBonus = totalAssignments > 0 ? (completedAssignments / totalAssignments) * 20 : 0;
+            skillsProgress[skill] = Math.min(100, Math.round(baseProgress + completionBonus));
           });
         }
       }
 
-      // Mock weekly progress data
-      const weeklyProgress = [
-        { week: 'Week 1', completed: 2, total: 3 },
-        { week: 'Week 2', completed: 4, total: 5 },
-        { week: 'Week 3', completed: 3, total: 4 },
-        { week: 'Week 4', completed: 5, total: 6 },
-      ];
+      // Calculate weekly progress based on actual submission dates
+      const weeklyProgress: { week: string; completed: number; total: number }[] = [];
+      const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+      
+      if (submissionsSnap.exists()) {
+        const submissions = submissionsSnap.val();
+        const allSubmissions: any[] = [];
+        
+        ['github', 'drive'].forEach(type => {
+          if (submissions[type] && submissions[type][currentUser?.uid]) {
+            const userSubmissions = submissions[type][currentUser?.uid];
+            if (Array.isArray(userSubmissions)) {
+              allSubmissions.push(...userSubmissions);
+            }
+          }
+        });
+
+        // Sort submissions by date
+        allSubmissions.sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
+
+        // Distribute submissions across weeks
+        weeks.forEach((week, index) => {
+          const weekSubmissions = Math.ceil(allSubmissions.length * (index + 1) / weeks.length) - 
+                                 Math.ceil(allSubmissions.length * index / weeks.length);
+          const weekTotal = Math.ceil(totalAssignments / weeks.length);
+          
+          weeklyProgress.push({
+            week,
+            completed: Math.min(weekSubmissions, weekTotal),
+            total: weekTotal
+          });
+        });
+      } else {
+        // If no submissions, show empty progress
+        weeks.forEach(week => {
+          weeklyProgress.push({
+            week,
+            completed: 0,
+            total: Math.ceil(totalAssignments / weeks.length) || 1
+          });
+        });
+      }
 
       setProgressData({
         totalAssignments,
         completedAssignments: Math.min(completedAssignments, totalAssignments),
-        totalTasks,
-        completedTasks,
-        averageGrade: 85, // Mock average grade
+        totalTasks: totalAssignments, // Using assignments as tasks
+        completedTasks: completedAssignments,
+        averageGrade,
         skillsProgress,
         weeklyProgress,
       });
@@ -206,42 +247,49 @@ export default function InternProgress() {
         >
           <Card className="p-6 text-center">
             <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
-              <div className="text-4xl font-bold text-purple-600">{progressData.averageGrade}</div>
+              <div className="text-4xl font-bold text-purple-600">
+                {progressData.averageGrade || 'N/A'}
+                {progressData.averageGrade > 0 && '%'}
+              </div>
             </div>
             <h3 className="text-lg font-semibold text-gray-900">Average Grade</h3>
-            <p className="text-sm text-gray-600">Based on completed assignments</p>
+            <p className="text-sm text-gray-600">
+              {progressData.averageGrade > 0 ? 'Based on completed assignments' : 'No grades yet'}
+            </p>
           </Card>
         </motion.div>
       </div>
 
       {/* Skills Progress */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Skills Development</h3>
-          <div className="space-y-4">
-            {Object.entries(progressData.skillsProgress).map(([skill, progress], index) => (
-              <div key={skill} className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium text-gray-700">{skill}</span>
-                  <span className="text-sm text-gray-500">{progress}%</span>
+      {Object.keys(progressData.skillsProgress).length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Skills Development</h3>
+            <div className="space-y-4">
+              {Object.entries(progressData.skillsProgress).map(([skill, progress], index) => (
+                <div key={skill} className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium text-gray-700">{skill}</span>
+                    <span className="text-sm text-gray-500">{progress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress}%` }}
+                      transition={{ delay: 0.5 + index * 0.1, duration: 0.8 }}
+                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full"
+                    />
+                  </div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progress}%` }}
-                    transition={{ delay: 0.5 + index * 0.1, duration: 0.8 }}
-                    className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </motion.div>
+              ))}
+            </div>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Weekly Progress */}
       <motion.div
@@ -253,7 +301,7 @@ export default function InternProgress() {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Progress</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {progressData.weeklyProgress.map((week, index) => {
-              const weekProgress = Math.round((week.completed / week.total) * 100);
+              const weekProgress = week.total > 0 ? Math.round((week.completed / week.total) * 100) : 0;
               return (
                 <motion.div
                   key={week.week}
@@ -290,29 +338,44 @@ export default function InternProgress() {
         transition={{ delay: 0.6 }}
       >
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Achievements</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Achievements</h3>
           <div className="space-y-3">
-            <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg">
-              <Award className="h-6 w-6 text-yellow-500" />
-              <div>
-                <p className="font-medium text-gray-900">First Assignment Completed</p>
-                <p className="text-sm text-gray-600">Completed your first assignment on time</p>
+            {progressData.completedAssignments > 0 && (
+              <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg">
+                <Award className="h-6 w-6 text-yellow-500" />
+                <div>
+                  <p className="font-medium text-gray-900">First Assignment Completed</p>
+                  <p className="text-sm text-gray-600">Completed your first assignment</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
-              <CheckCircle className="h-6 w-6 text-green-500" />
-              <div>
-                <p className="font-medium text-gray-900">Perfect Week</p>
-                <p className="text-sm text-gray-600">Completed all tasks in Week 2</p>
+            )}
+            
+            {progressData.weeklyProgress.some(week => week.completed === week.total && week.total > 0) && (
+              <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
+                <CheckCircle className="h-6 w-6 text-green-500" />
+                <div>
+                  <p className="font-medium text-gray-900">Perfect Week</p>
+                  <p className="text-sm text-gray-600">Completed all tasks in a week</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
-              <Star className="h-6 w-6 text-blue-500" />
-              <div>
-                <p className="font-medium text-gray-900">High Performer</p>
-                <p className="text-sm text-gray-600">Maintained 85%+ average grade</p>
+            )}
+            
+            {progressData.averageGrade >= 85 && (
+              <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+                <Star className="h-6 w-6 text-blue-500" />
+                <div>
+                  <p className="font-medium text-gray-900">High Performer</p>
+                  <p className="text-sm text-gray-600">Maintained 85%+ average grade</p>
+                </div>
               </div>
-            </div>
+            )}
+
+            {progressData.completedAssignments === 0 && progressData.averageGrade === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Complete assignments to unlock achievements!</p>
+              </div>
+            )}
           </div>
         </Card>
       </motion.div>

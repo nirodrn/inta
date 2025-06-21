@@ -9,7 +9,9 @@ import PreInterns from './pages/admin/PreInterns';
 import Interviews from './pages/admin/Interviews';
 import Interns from './pages/admin/Interns';
 import Supervisors from './pages/admin/Supervisors';
+import SupervisorAssignment from './pages/admin/SupervisorAssignment';
 import Groups from './pages/admin/Groups';
+import AllGroups from './pages/admin/AllGroups';
 import Assignments from './pages/admin/Assignments';
 import Documents from './pages/admin/Documents';
 import Reports from './pages/admin/Reports';
@@ -19,11 +21,16 @@ import InternDashboard from './pages/intern/Dashboard';
 import InternAssignments from './pages/intern/Assignments';
 import InternMeetings from './pages/intern/Meetings';
 import InternGroup from './pages/intern/Group';
+import GroupChatPage from './pages/intern/GroupChat';
 import InternProgress from './pages/intern/Progress';
 import InternFeedback from './pages/intern/Feedback';
 import InternProfile from './pages/intern/Profile';
+import InternLeaderboard from './pages/intern/Leaderboard';
 import SupervisorDashboard from './pages/supervisor/Dashboard';
 import SupervisorInterns from './pages/supervisor/Interns';
+import GroupManagement from './pages/supervisor/GroupManagement';
+import ProjectAssignment from './pages/supervisor/ProjectAssignment';
+import InternGrading from './pages/supervisor/InternGrading';
 import SupervisorAssignments from './pages/supervisor/Assignments';
 import SupervisorMeetings from './pages/supervisor/Meetings';
 import SupervisorReports from './pages/supervisor/Reports';
@@ -136,10 +143,26 @@ function AppRoutes() {
                 }
               />
               <Route
+                path="/admin/supervisor-assignment"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <SupervisorAssignment />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/admin/groups"
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <Groups />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/all-groups"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AllGroups />
                   </ProtectedRoute>
                 }
               />
@@ -220,6 +243,14 @@ function AppRoutes() {
                 }
               />
               <Route
+                path="/intern/group-chat"
+                element={
+                  <ProtectedRoute allowedRoles={['intern']}>
+                    <GroupChatPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/intern/progress"
                 element={
                   <ProtectedRoute allowedRoles={['intern']}>
@@ -243,6 +274,14 @@ function AppRoutes() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/intern/leaderboard"
+                element={
+                  <ProtectedRoute allowedRoles={['intern']}>
+                    <InternLeaderboard />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Supervisor Routes */}
               <Route
@@ -258,6 +297,30 @@ function AppRoutes() {
                 element={
                   <ProtectedRoute allowedRoles={['supervisor']}>
                     <SupervisorInterns />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/supervisor/group-management"
+                element={
+                  <ProtectedRoute allowedRoles={['supervisor']}>
+                    <GroupManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/supervisor/project-assignment"
+                element={
+                  <ProtectedRoute allowedRoles={['supervisor']}>
+                    <ProjectAssignment />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/supervisor/intern-grading"
+                element={
+                  <ProtectedRoute allowedRoles={['supervisor']}>
+                    <InternGrading />
                   </ProtectedRoute>
                 }
               />

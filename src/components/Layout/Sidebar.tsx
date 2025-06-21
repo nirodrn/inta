@@ -14,7 +14,11 @@ import {
   Settings,
   ClipboardList,
   UserPlus,
-  GraduationCap
+  GraduationCap,
+  FolderOpen,
+  Star,
+  UsersIcon,
+  UserCog
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -31,7 +35,9 @@ const navigationItems: Record<string, NavItem[]> = {
     { path: '/admin/interviews', label: 'Interviews', icon: Calendar },
     { path: '/admin/interns', label: 'Interns', icon: GraduationCap },
     { path: '/admin/supervisors', label: 'Supervisors', icon: UserCheck },
+    { path: '/admin/supervisor-assignment', label: 'Supervisor Assignment', icon: UserCog },
     { path: '/admin/groups', label: 'Groups', icon: Users },
+    { path: '/admin/all-groups', label: 'All Groups', icon: UsersIcon },
     { path: '/admin/assignments', label: 'Assignments', icon: FileText },
     { path: '/admin/documents', label: 'Documents', icon: BookOpen },
     { path: '/admin/reports', label: 'Reports', icon: BarChart3 },
@@ -48,12 +54,16 @@ const navigationItems: Record<string, NavItem[]> = {
     { path: '/intern/group', label: 'My Group', icon: Users },
     { path: '/intern/progress', label: 'Progress', icon: BarChart3 },
     { path: '/intern/feedback', label: 'Feedback', icon: MessageSquare },
+    { path: '/intern/leaderboard', label: 'Leaderboard', icon: Trophy },
     { path: '/intern/profile', label: 'Profile', icon: Settings },
   ],
   supervisor: [
     { path: '/supervisor', label: 'Dashboard', icon: Home },
     { path: '/supervisor/interns', label: 'My Interns', icon: Users },
-    { path: '/supervisor/assignments', label: 'Assignments', icon: ClipboardList },
+    { path: '/supervisor/group-management', label: 'Group Management', icon: UsersIcon },
+    { path: '/supervisor/project-assignment', label: 'Project Assignment', icon: FolderOpen },
+    { path: '/supervisor/intern-grading', label: 'Intern Grading', icon: Star },
+    { path: '/supervisor/assignments', label: 'Assignment Reviews', icon: ClipboardList },
     { path: '/supervisor/meetings', label: 'Meetings', icon: Calendar },
     { path: '/supervisor/reports', label: 'Reports', icon: BarChart3 },
     { path: '/supervisor/profile', label: 'Profile', icon: Settings },

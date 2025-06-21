@@ -15,6 +15,7 @@ import { database } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
+import NicknameModal from '../../components/NicknameModal';
 
 interface DashboardStats {
   totalAssignments: number;
@@ -38,12 +39,32 @@ export default function InternDashboard() {
   const [recentAssignments, setRecentAssignments] = useState<any[]>([]);
   const [upcomingMeetings, setUpcomingMeetings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showNicknameModal, setShowNicknameModal] = useState(false);
 
   useEffect(() => {
     if (currentUser?.uid) {
       fetchDashboardData();
+      checkNickname();
     }
   }, [currentUser]);
+
+  const checkNickname = async () => {
+    if (!currentUser?.uid) return;
+
+    try {
+      const internRef = ref(database, `acceptedInterns/${currentUser.uid}`);
+      const snapshot = await get(internRef);
+      
+      if (snapshot.exists()) {
+        const internData = snapshot.val();
+        if (!internData.nickname || internData.nickname.trim() === '') {
+          setShowNicknameModal(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking nickname:', error);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -289,6 +310,12 @@ export default function InternDashboard() {
           </div>
         </Card>
       </motion.div>
+
+      {/* Nickname Modal */}
+      <NicknameModal
+        isOpen={showNicknameModal}
+        onClose={() => setShowNicknameModal(false)}
+      />
     </div>
   );
 }

@@ -18,39 +18,54 @@ const sizes = {
 };
 
 export default function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-              onClick={onClose}
-            />
+  // Prevent background scroll when modal is open
+  React.useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className={`inline-block w-full ${sizes[size]} my-8 overflow-hidden rounded-lg bg-white text-left align-middle shadow-xl transition-all`}
-            >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-                <button
-                  onClick={onClose}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              <div className="px-6 py-4">{children}</div>
-            </motion.div>
-          </div>
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className={`relative w-full ${sizes[size]} bg-white rounded-lg shadow-xl max-h-[90vh] overflow-hidden`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white">
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+            type="button"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
-      )}
-    </AnimatePresence>
+        
+        {/* Content */}
+        <div className="px-6 py-4 max-h-[calc(90vh-80px)] overflow-y-auto">
+          {children}
+        </div>
+      </motion.div>
+    </div>
   );
 }

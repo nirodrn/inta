@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ref, get, push, update, remove } from 'firebase/database';
+import { ref, get, update, remove } from 'firebase/database';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { UserCheck, Plus, Edit, Trash2, Search } from 'lucide-react';
+import { UserCheck, Plus, Edit, Trash2, Search, X, Eye, EyeOff } from 'lucide-react';
 import { database, auth } from '../../config/firebase';
 import { Supervisor } from '../../types';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
-import Modal from '../../components/UI/Modal';
 import toast from 'react-hot-toast';
 
 export default function Supervisors() {
@@ -17,6 +16,7 @@ export default function Supervisors() {
   const [editingSupervisor, setEditingSupervisor] = useState<Supervisor | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -24,6 +24,7 @@ export default function Supervisors() {
     phone: '',
     department: '',
     notes: '',
+    password: '',
   });
 
   useEffect(() => {
@@ -49,16 +50,8 @@ export default function Supervisors() {
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     
     if (submitting) return;
     
@@ -69,6 +62,14 @@ export default function Supervisors() {
     }
     if (!formData.email.trim()) {
       toast.error('Email is required');
+      return;
+    }
+    if (!editingSupervisor && !formData.password.trim()) {
+      toast.error('Password is required for new supervisors');
+      return;
+    }
+    if (!editingSupervisor && formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters long');
       return;
     }
 
@@ -91,13 +92,13 @@ export default function Supervisors() {
         toast.success('Supervisor updated successfully!');
       } else {
         // Create new supervisor
-        const defaultPassword = 'supervisor123';
+        const password = formData.password.trim();
         
         let userCredential;
         let newUid = `supervisor_${Date.now()}`;
         
         try {
-          userCredential = await createUserWithEmailAndPassword(auth, formData.email.trim(), defaultPassword);
+          userCredential = await createUserWithEmailAndPassword(auth, formData.email.trim(), password);
           newUid = userCredential.user.uid;
         } catch (authError: any) {
           if (authError.code === 'auth/email-already-in-use') {
@@ -119,7 +120,7 @@ export default function Supervisors() {
         };
 
         await update(ref(database, `supervisors/${newUid}`), supervisorData);
-        toast.success(`Supervisor created successfully! Login credentials - Email: ${formData.email}, Password: ${defaultPassword}`);
+        toast.success(`Supervisor created successfully! Login credentials - Email: ${formData.email}, Password: ${password}`);
       }
 
       resetForm();
@@ -141,6 +142,7 @@ export default function Supervisors() {
       phone: supervisor.phone || '',
       department: supervisor.department || '',
       notes: supervisor.notes || '',
+      password: '', // Don't populate password for editing
     });
     setShowModal(true);
   };
@@ -165,8 +167,10 @@ export default function Supervisors() {
       phone: '',
       department: '',
       notes: '',
+      password: '',
     });
     setEditingSupervisor(null);
+    setShowPassword(false);
   };
 
   const handleModalClose = () => {
@@ -292,106 +296,167 @@ export default function Supervisors() {
         </Card>
       )}
 
-      {/* Supervisor Modal */}
-      <Modal
-        isOpen={showModal}
-        onClose={handleModalClose}
-        title={editingSupervisor ? 'Edit Supervisor' : 'Add Supervisor'}
-        size="lg"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Full Name *
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter full name"
-              required
-              disabled={submitting}
-              autoComplete="off"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email *
-              </label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter email address"
-                required
-                disabled={!!editingSupervisor || submitting}
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone
-              </label>
-              <input
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter phone number"
+      {/* Custom Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50"
+            onClick={handleModalClose}
+          />
+          
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative w-full max-w-2xl bg-white rounded-lg shadow-xl max-h-[90vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {editingSupervisor ? 'Edit Supervisor' : 'Add Supervisor'}
+              </h3>
+              <button
+                onClick={handleModalClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+                type="button"
                 disabled={submitting}
-                autoComplete="off"
-              />
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
-          </div>
+            
+            {/* Content */}
+            <div className="px-6 py-4 max-h-[calc(90vh-80px)] overflow-y-auto">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter full name"
+                    required
+                    disabled={submitting}
+                    autoComplete="off"
+                  />
+                </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Department
-            </label>
-            <input
-              type="text"
-              value={formData.department}
-              onChange={(e) => handleInputChange('department', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g., Software Development, HR, etc."
-              disabled={submitting}
-              autoComplete="off"
-            />
-          </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter email address"
+                      required
+                      disabled={!!editingSupervisor || submitting}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter phone number"
+                      disabled={submitting}
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
-            </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              rows={3}
-              placeholder="Additional notes about the supervisor..."
-              disabled={submitting}
-            />
-          </div>
+                {!editingSupervisor && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Password *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={formData.password}
+                        onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                        className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter password (min. 6 characters)"
+                        required
+                        disabled={submitting}
+                        minLength={6}
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        disabled={submitting}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Password must be at least 6 characters long
+                    </p>
+                  </div>
+                )}
 
-          <div className="flex justify-end space-x-3">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleModalClose}
-              disabled={submitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Saving...' : (editingSupervisor ? 'Update Supervisor' : 'Add Supervisor')}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Department
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.department}
+                    onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., Software Development, HR, etc."
+                    disabled={submitting}
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Notes
+                  </label>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={3}
+                    placeholder="Additional notes about the supervisor..."
+                    disabled={submitting}
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleModalClose}
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={submitting}>
+                    {submitting ? 'Saving...' : (editingSupervisor ? 'Update Supervisor' : 'Add Supervisor')}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
