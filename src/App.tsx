@@ -19,6 +19,9 @@ import Leaderboard from './pages/admin/Leaderboard';
 import PreInternDashboard from './pages/pre-intern/Dashboard';
 import InternDashboard from './pages/intern/Dashboard';
 import InternAssignments from './pages/intern/Assignments';
+import InternProjects from './pages/intern/Projects';
+import InternReports from './pages/intern/Reports';
+import InternDocuments from './pages/intern/Documents';
 import InternMeetings from './pages/intern/Meetings';
 import InternGroup from './pages/intern/Group';
 import GroupChatPage from './pages/intern/GroupChat';
@@ -32,6 +35,8 @@ import GroupManagement from './pages/supervisor/GroupManagement';
 import ProjectAssignment from './pages/supervisor/ProjectAssignment';
 import InternGrading from './pages/supervisor/InternGrading';
 import SupervisorAssignments from './pages/supervisor/Assignments';
+import DocumentReview from './pages/supervisor/DocumentReview';
+import DocumentUpload from './pages/supervisor/DocumentUpload';
 import SupervisorMeetings from './pages/supervisor/Meetings';
 import SupervisorReports from './pages/supervisor/Reports';
 import SupervisorProfile from './pages/supervisor/Profile';
@@ -227,6 +232,30 @@ function AppRoutes() {
                 }
               />
               <Route
+                path="/intern/projects"
+                element={
+                  <ProtectedRoute allowedRoles={['intern']}>
+                    <InternProjects />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/intern/reports"
+                element={
+                  <ProtectedRoute allowedRoles={['intern']}>
+                    <InternReports />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/intern/documents"
+                element={
+                  <ProtectedRoute allowedRoles={['intern']}>
+                    <InternDocuments />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/intern/meetings"
                 element={
                   <ProtectedRoute allowedRoles={['intern']}>
@@ -329,6 +358,22 @@ function AppRoutes() {
                 element={
                   <ProtectedRoute allowedRoles={['supervisor']}>
                     <SupervisorAssignments />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/supervisor/document-review"
+                element={
+                  <ProtectedRoute allowedRoles={['supervisor']}>
+                    <DocumentReview />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/supervisor/document-upload"
+                element={
+                  <ProtectedRoute allowedRoles={['supervisor']}>
+                    <DocumentUpload />
                   </ProtectedRoute>
                 }
               />

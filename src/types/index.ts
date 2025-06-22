@@ -82,6 +82,19 @@ export interface Assignment {
   updatedAt?: string;
 }
 
+export interface Project {
+  id: string;
+  title: string;
+  description: string;
+  deadline: string;
+  assignedTo: 'individual' | 'group';
+  assignedIds: string[];
+  supervisorId: string;
+  status: 'active' | 'completed' | 'overdue';
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface Submission {
   id: string;
   assignmentId: string;
@@ -93,6 +106,27 @@ export interface Submission {
   feedback?: string;
   gradedAt?: string;
   gradedBy?: string;
+}
+
+export interface DocumentSubmission {
+  id: string;
+  title: string;
+  description: string;
+  projectId?: string;
+  assignmentId?: string;
+  internId: string;
+  internName: string;
+  supervisorId: string;
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  submittedAt: string;
+  grade?: number;
+  feedback?: string;
+  gradedAt?: string;
+  gradedBy?: string;
+  status: 'submitted' | 'graded' | 'needs_revision';
 }
 
 export interface Group {

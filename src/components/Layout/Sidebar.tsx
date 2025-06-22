@@ -18,7 +18,9 @@ import {
   FolderOpen,
   Star,
   UsersIcon,
-  UserCog
+  UserCog,
+  Upload,
+  Eye
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -50,6 +52,9 @@ const navigationItems: Record<string, NavItem[]> = {
   intern: [
     { path: '/intern', label: 'Dashboard', icon: Home },
     { path: '/intern/assignments', label: 'Assignments', icon: FileText },
+    { path: '/intern/projects', label: 'Projects', icon: FolderOpen },
+    { path: '/intern/reports', label: 'Report Submissions', icon: Upload },
+    { path: '/intern/documents', label: 'Documents', icon: BookOpen },
     { path: '/intern/meetings', label: 'Meetings', icon: Calendar },
     { path: '/intern/group', label: 'My Group', icon: Users },
     { path: '/intern/progress', label: 'Progress', icon: BarChart3 },
@@ -64,6 +69,8 @@ const navigationItems: Record<string, NavItem[]> = {
     { path: '/supervisor/project-assignment', label: 'Project Assignment', icon: FolderOpen },
     { path: '/supervisor/intern-grading', label: 'Intern Grading', icon: Star },
     { path: '/supervisor/assignments', label: 'Assignment Reviews', icon: ClipboardList },
+    { path: '/supervisor/document-review', label: 'Document Review', icon: Eye },
+    { path: '/supervisor/document-upload', label: 'Document Upload', icon: Upload },
     { path: '/supervisor/meetings', label: 'Meetings', icon: Calendar },
     { path: '/supervisor/reports', label: 'Reports', icon: BarChart3 },
     { path: '/supervisor/profile', label: 'Profile', icon: Settings },
