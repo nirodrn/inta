@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout/Layout';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import AdminDashboard from './pages/admin/Dashboard';
 import PreInterns from './pages/admin/PreInterns';
@@ -80,6 +81,27 @@ function AppRoutes() {
 
   return (
     <Routes>
+      {/* Landing Page */}
+      <Route 
+        path="/" 
+        element={
+          currentUser ? (
+            <Navigate 
+              to={
+                currentUser.role === 'admin' ? '/admin' :
+                currentUser.role === 'pre-interview' ? '/pre-intern' :
+                currentUser.role === 'intern' ? '/intern' :
+                currentUser.role === 'supervisor' ? '/supervisor' :
+                '/'
+              } 
+              replace 
+            />
+          ) : (
+            <Landing />
+          )
+        } 
+      />
+
       {/* Login Route */}
       <Route 
         path="/login" 
@@ -402,23 +424,6 @@ function AppRoutes() {
                 }
               />
 
-              {/* Default Redirects */}
-              <Route
-                path="/"
-                element={
-                  <Navigate 
-                    to={
-                      currentUser.role === 'admin' ? '/admin' :
-                      currentUser.role === 'pre-interview' ? '/pre-intern' :
-                      currentUser.role === 'intern' ? '/intern' :
-                      currentUser.role === 'supervisor' ? '/supervisor' :
-                      '/login'
-                    } 
-                    replace 
-                  />
-                }
-              />
-
               {/* Unauthorized */}
               <Route
                 path="/unauthorized"
@@ -435,7 +440,7 @@ function AppRoutes() {
           </Layout>
         } />
       ) : (
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       )}
     </Routes>
   );

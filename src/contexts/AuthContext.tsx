@@ -44,9 +44,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await signOut(auth);
         throw new Error('User profile not found');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Login error:', error);
-      toast.error('Login failed: ' + (error.message || 'Unknown error'));
+      // Show a generic error message to the user
+      toast.error('Login failed. Please check your credentials and try again.');
       throw error;
     } finally {
       setLoading(false);
@@ -59,8 +60,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser(null);
       setFirebaseUser(null);
       toast.success('Successfully logged out!');
-    } catch (error: any) {
-      toast.error('Logout failed: ' + error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error('Logout failed: ' + errorMessage);
       throw error;
     }
   }
