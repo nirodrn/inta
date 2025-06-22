@@ -59,7 +59,7 @@ const navigationItems: Record<string, NavItem[]> = {
     { path: '/intern/group', label: 'My Group', icon: Users },
     { path: '/intern/progress', label: 'Progress', icon: BarChart3 },
     { path: '/intern/feedback', label: 'Feedback', icon: MessageSquare },
-    { path: '/intern/leaderboard', label: 'Leaderboard', icon: Trophy },
+    //{ path: '/intern/leaderboard', label: 'Leaderboard', icon: Trophy },
     { path: '/intern/profile', label: 'Profile', icon: Settings },
   ],
   supervisor: [

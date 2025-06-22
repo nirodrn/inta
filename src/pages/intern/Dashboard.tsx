@@ -7,7 +7,7 @@ import {
   TrendingUp, 
   Clock, 
   CheckCircle,
-  AlertCircle,
+ 
   BookOpen
 } from 'lucide-react';
 import { ref, get } from 'firebase/database';

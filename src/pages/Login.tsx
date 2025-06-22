@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react';
@@ -122,11 +122,7 @@ export default function Login() {
             <p className="text-sm text-gray-600">
               Don't have an account? Contact your administrator.
             </p>
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500 mb-2">Demo Credentials:</p>
-              <p className="text-xs text-gray-600">Admin: niro@detzglobal.com</p>
-              <p className="text-xs text-gray-600">Password: (check Firebase Auth)</p>
-            </div>
+            
           </div>
         </div>
       </motion.div>
