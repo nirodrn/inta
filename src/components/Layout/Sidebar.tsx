@@ -74,6 +74,7 @@ const navigationItems: Record<string, NavItem[]> = {
     { path: '/supervisor/meetings', label: 'Meetings', icon: Calendar },
     { path: '/supervisor/reports', label: 'Reports', icon: BarChart3 },
     { path: '/supervisor/profile', label: 'Profile', icon: Settings },
+     { path: '/supervisor/group-chat', label: 'Group Chat', icon: MessageSquare },
   ],
 };
 

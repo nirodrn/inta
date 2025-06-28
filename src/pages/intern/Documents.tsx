@@ -238,7 +238,9 @@ export default function InternDocuments() {
                     <Eye className="h-4 w-4 mr-2" />
                     View
                   </Button>
+                  {/* 
                   <Button 
+                    id="downloadBtn"
                     variant="primary" 
                     size="sm"
                     onClick={() => {
@@ -251,6 +253,7 @@ export default function InternDocuments() {
                     <Download className="h-4 w-4 mr-2" />
                     Download
                   </Button>
+                  */}
                 </div>
               </div>
             </Card>
