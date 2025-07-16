@@ -86,7 +86,7 @@ export default function InternDocuments() {
         });
       }
 
-      // Sort by upload date (newest first)
+      // Sort by upload date (newest first) - already correct
       userDocuments.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
       
       setDocuments(userDocuments);

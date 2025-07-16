@@ -29,6 +29,7 @@ import GroupChatPage from './pages/intern/GroupChat';
 import InternProgress from './pages/intern/Progress';
 import InternFeedback from './pages/intern/Feedback';
 import InternProfile from './pages/intern/Profile';
+import PrivateChats from './pages/intern/PrivateChats';
 import InternLeaderboard from './pages/intern/Leaderboard';
 import SupervisorDashboard from './pages/supervisor/Dashboard';
 import SupervisorInterns from './pages/supervisor/Interns';
@@ -323,6 +324,14 @@ function AppRoutes() {
                 element={
                   <ProtectedRoute allowedRoles={['intern']}>
                     <InternProfile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/intern/private-chats"
+                element={
+                  <ProtectedRoute allowedRoles={['intern']}>
+                    <PrivateChats />
                   </ProtectedRoute>
                 }
               />

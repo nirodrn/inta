@@ -57,6 +57,7 @@ const navigationItems: Record<string, NavItem[]> = {
     { path: '/intern/documents', label: 'Documents', icon: BookOpen },
     { path: '/intern/meetings', label: 'Meetings', icon: Calendar },
     { path: '/intern/group', label: 'My Group', icon: Users },
+    { path: '/intern/private-chats', label: 'Private Chats', icon: MessageSquare },
     { path: '/intern/progress', label: 'Progress', icon: BarChart3 },
     { path: '/intern/feedback', label: 'Feedback', icon: MessageSquare },
     //{ path: '/intern/leaderboard', label: 'Leaderboard', icon: Trophy },

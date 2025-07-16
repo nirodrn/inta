@@ -98,8 +98,8 @@ export default function InternProjects() {
         });
       }
 
-      // Sort by deadline (earliest first)
-      userProjects.sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
+      // Sort by creation date (newest first)
+      userProjects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
       setProjects(userProjects);
     } catch (error) {
