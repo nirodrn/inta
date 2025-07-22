@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ref, get, push } from 'firebase/database';
+import { ref, get, push, remove } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { FileText, Upload, Calendar, CheckCircle, Clock, AlertCircle, Download, Eye, Star } from 'lucide-react';
+import { FileText, Upload, Calendar, CheckCircle, Clock, AlertCircle, Download, Eye, Star, Trash2 } from 'lucide-react';
 import { database, storage } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { DocumentSubmission, Project, Assignment } from '../../types';
@@ -20,6 +20,7 @@ export default function InternReports() {
   const [showModal, setShowModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -198,6 +199,32 @@ export default function InternReports() {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleDeleteReport = async (submissionId: string) => {
+    if (deletingId) return;
+    
+    if (window.confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
+      setDeletingId(submissionId);
+      
+      try {
+        await remove(ref(database, `documentSubmissions/${submissionId}`));
+        toast.success('Report deleted successfully!');
+        fetchData();
+      } catch (error) {
+        console.error('Error deleting report:', error);
+        toast.error('Failed to delete report');
+      } finally {
+        setDeletingId(null);
+      }
+    }
+  };
+
+  const canDeleteReport = (submittedAt: string) => {
+    const submissionTime = new Date(submittedAt);
+    const now = new Date();
+    const diffInMinutes = (now.getTime() - submissionTime.getTime()) / (1000 * 60);
+    return diffInMinutes <= 60;
   };
 
   const resetForm = () => {
@@ -402,6 +429,20 @@ export default function InternReports() {
                     >
                       <Download className="h-4 w-4" />
                     </Button>
+                    {canDeleteReport(submission.submittedAt) && (
+                      <Button 
+                        variant="danger" 
+                        size="sm"
+                        onClick={() => handleDeleteReport(submission.id)}
+                        disabled={deletingId === submission.id}
+                      >
+                        {deletingId === submission.id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Card>

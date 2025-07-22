@@ -1,0 +1,7 @@
+dashboard should show in interns mainly focus on projects , not assignments
+
+and is there any method to enable this, if project was add by supervisor , when supervisor  goin to upload document  related to that project , in document upload section , can select that project first , automatically bring that title and description for this  (auto fill )
+
+and  make working dashboard for supervisor
+
+and update group chat  for supervisor with features , enable supervisor can handle  that group , and supervisor can see all his interns private chat groups and chats

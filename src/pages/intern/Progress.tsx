@@ -37,6 +37,7 @@ interface Deadline {
   title: string;
   type: 'assignment' | 'project';
   deadline: string;
+  deadlineTime?: string;
   daysLeft: number;
   status: 'upcoming' | 'urgent' | 'overdue';
 }
@@ -390,6 +391,7 @@ export default function InternProgress() {
           title: item.title,
           type: item.assignedTo ? 'project' : 'assignment',
           deadline: item.deadline,
+          deadlineTime: item.deadlineTime,
           daysLeft,
           status
         });
@@ -709,6 +711,11 @@ export default function InternProgress() {
                       <p className="text-sm text-gray-600">
                         Due: {new Date(deadline.deadline).toLocaleDateString()}
                       </p>
+                      {deadline.deadlineTime && (
+                        <p className="text-xs text-gray-500">
+                          at {deadline.deadlineTime}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right">
                       <span className={`text-sm font-medium ${

@@ -74,6 +74,7 @@ export interface Assignment {
   title: string;
   description: string;
   deadline: string;
+  deadlineTime?: string;
   fileUrl?: string;
   targetAudience: 'individual' | 'group' | 'all';
   targetIds?: string[];
@@ -87,12 +88,15 @@ export interface Project {
   title: string;
   description: string;
   deadline: string;
+  deadlineTime?: string;
   assignedTo: 'individual' | 'group';
   assignedIds: string[];
   supervisorId: string;
   status: 'active' | 'completed' | 'overdue';
   createdAt: string;
   updatedAt?: string;
+  completedBy?: string;
+  completedAt?: string;
 }
 
 export interface Submission {
@@ -170,4 +174,14 @@ export interface LeaderboardEntry {
   averageGrade: number;
   githubUrl?: string;
   skills: string[];
+}
+
+interface Deadline {
+  id: string;
+  title: string;
+  type: 'assignment' | 'project';
+  deadline: string;
+  deadlineTime?: string;
+  daysLeft: number;
+  status: 'upcoming' | 'urgent' | 'overdue';
 }

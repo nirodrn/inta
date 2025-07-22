@@ -148,6 +148,7 @@ export default function InternDashboard() {
                 id,
                 title: assignment.title,
                 deadline: assignment.deadline,
+                deadlineTime: assignment.deadlineTime,
                 type: 'assignment',
                 daysLeft: daysUntilDeadline
               });
@@ -242,6 +243,7 @@ export default function InternDashboard() {
                 id,
                 title: project.title,
                 deadline: project.deadline,
+                deadlineTime: project.deadlineTime,
                 type: 'project',
                 daysLeft: daysUntilDeadline
               });
@@ -644,6 +646,7 @@ export default function InternDashboard() {
                       <p className="font-medium text-gray-900">{deadline.title}</p>
                       <p className="text-sm text-gray-600">
                         Due: {new Date(deadline.deadline).toLocaleDateString()}
+                        {deadline.deadlineTime && ` at ${deadline.deadlineTime}`}
                       </p>
                     </div>
                     <div className="text-right">
@@ -656,6 +659,9 @@ export default function InternDashboard() {
                          deadline.daysLeft === 1 ? '1 day left' : 
                          `${deadline.daysLeft} days left`}
                       </span>
+                      {deadline.deadlineTime && (
+                        <p className="text-xs text-gray-500">at {deadline.deadlineTime}</p>
+                      )}
                     </div>
                   </div>
                 ))

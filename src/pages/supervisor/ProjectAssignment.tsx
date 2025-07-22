@@ -38,6 +38,7 @@ export default function ProjectAssignment() {
     title: '',
     description: '',
     deadline: '',
+    deadlineTime: '',
     assignedTo: 'individual' as 'individual' | 'group',
     assignedIds: [] as string[],
   });
@@ -147,6 +148,7 @@ export default function ProjectAssignment() {
         title: formData.title.trim(),
         description: formData.description.trim(),
         deadline: formData.deadline,
+        deadlineTime: formData.deadlineTime,
         assignedTo: formData.assignedTo,
         assignedIds: formData.assignedIds,
         supervisorId: currentUser?.uid,
@@ -180,6 +182,7 @@ export default function ProjectAssignment() {
       title: project.title,
       description: project.description,
       deadline: project.deadline,
+      deadlineTime: (project as any).deadlineTime || '',
       assignedTo: project.assignedTo,
       assignedIds: project.assignedIds,
     });
@@ -219,6 +222,7 @@ export default function ProjectAssignment() {
       title: '',
       description: '',
       deadline: '',
+      deadlineTime: '',
       assignedTo: 'individual',
       assignedIds: [],
     });
@@ -348,6 +352,7 @@ export default function ProjectAssignment() {
                           <Calendar className="h-4 w-4 text-orange-500" />
                           <span className="font-medium">
                             {new Date(project.deadline).toLocaleDateString()}
+                            {(project as any).deadlineTime && ` at ${(project as any).deadlineTime}`}
                           </span>
                         </div>
                       </div>
@@ -492,6 +497,21 @@ export default function ProjectAssignment() {
                 disabled={submitting}
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Deadline Time
+              </label>
+              <input
+                type="time"
+                value={formData.deadlineTime}
+                onChange={(e) => setFormData({ ...formData, deadlineTime: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={submitting}
+              />
+            </div>
+          </div>
+
+          <div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Assign To *

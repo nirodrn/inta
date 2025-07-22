@@ -170,6 +170,22 @@ export default function InternProjects() {
     });
   };
 
+  const formatDateTime = (dateString: string, timeString?: string) => {
+    const date = new Date(dateString);
+    const dateStr = date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+    
+    if (timeString) {
+      return `${dateStr} at ${timeString}`;
+    }
+    
+    return dateStr;
+  };
+
   const getDaysUntilDeadline = (deadline: string) => {
     const deadlineDate = new Date(deadline);
     const now = new Date();
@@ -270,7 +286,9 @@ export default function InternProjects() {
                         <p className="text-xs text-gray-500">Deadline</p>
                         <div className="flex items-center space-x-2">
                           <Calendar className="h-4 w-4 text-orange-500" />
-                          <span className="font-medium">{formatDate(project.deadline)}</span>
+                          <span className="font-medium">
+                            {formatDateTime(project.deadline, (project as any).deadlineTime)}
+                          </span>
                         </div>
                         {daysUntilDeadline >= 0 && project.status !== 'completed' && (
                           <p className={`text-xs mt-1 ${
