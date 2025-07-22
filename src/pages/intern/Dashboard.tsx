@@ -13,7 +13,8 @@ import {
   User,
   Award,
   Target,
-  Bell
+  Bell,
+  FolderOpen
 } from 'lucide-react';
 import { ref, get } from 'firebase/database';
 import { database } from '../../config/firebase';
@@ -398,32 +399,32 @@ export default function InternDashboard() {
 
   const statCards = [
     {
-      title: 'Total Assignments',
-      value: stats.totalAssignments,
+      title: 'Total Projects',
+      value: stats.totalProjects,
       icon: FileText,
       color: 'from-blue-500 to-blue-600',
       bgColor: 'bg-blue-50',
-      onClick: () => navigate('/intern/assignments')
+      onClick: () => navigate('/intern/projects')
     },
     {
-      title: 'Completed',
-      value: stats.completedAssignments,
+      title: 'Completed Projects',
+      value: stats.completedProjects,
       icon: CheckCircle,
       color: 'from-green-500 to-green-600',
       bgColor: 'bg-green-50',
-      onClick: () => navigate('/intern/assignments')
+      onClick: () => navigate('/intern/projects')
     },
     {
-      title: 'Pending',
-      value: stats.pendingAssignments,
+      title: 'Active Projects',
+      value: stats.totalProjects - stats.completedProjects,
       icon: Clock,
       color: 'from-orange-500 to-orange-600',
       bgColor: 'bg-orange-50',
-      onClick: () => navigate('/intern/assignments')
+      onClick: () => navigate('/intern/projects')
     },
     {
-      title: 'Progress',
-      value: `${stats.overallProgress}%`,
+      title: 'Project Progress',
+      value: stats.totalProjects > 0 ? `${Math.round((stats.completedProjects / stats.totalProjects) * 100)}%` : '0%',
       icon: TrendingUp,
       color: 'from-purple-500 to-purple-600',
       bgColor: 'bg-purple-50',
@@ -522,8 +523,8 @@ export default function InternDashboard() {
             <div className="text-center">
               <div className="w-24 h-24 mx-auto mb-4">
                 <CircularProgressbar
-                  value={stats.overallProgress}
-                  text={`${stats.overallProgress}%`}
+                  value={stats.totalProjects > 0 ? (stats.completedProjects / stats.totalProjects) * 100 : 0}
+                  text={stats.totalProjects > 0 ? `${Math.round((stats.completedProjects / stats.totalProjects) * 100)}%` : '0%'}
                   styles={buildStyles({
                     textColor: '#1f2937',
                     pathColor: '#3b82f6',
@@ -531,8 +532,8 @@ export default function InternDashboard() {
                   })}
                 />
               </div>
-              <h4 className="font-semibold text-gray-900">Assignment Progress</h4>
-              <p className="text-sm text-gray-600">{stats.completedAssignments} of {stats.totalAssignments} completed</p>
+              <h4 className="font-semibold text-gray-900">Project Progress</h4>
+              <p className="text-sm text-gray-600">{stats.completedProjects} of {stats.totalProjects} completed</p>
             </div>
             
             <div className="text-center">
@@ -623,7 +624,7 @@ export default function InternDashboard() {
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Upcoming Deadlines</h3>
-              <Button variant="secondary" size="sm" onClick={() => navigate('/intern/assignments')}>
+              <Button variant="secondary" size="sm" onClick={() => navigate('/intern/projects')}>
                 View All
               </Button>
             </div>
@@ -685,10 +686,10 @@ export default function InternDashboard() {
             <Button 
               variant="secondary" 
               className="flex flex-col items-center p-4 h-auto"
-              onClick={() => navigate('/intern/assignments')}
+              onClick={() => navigate('/intern/projects')}
             >
-              <FileText className="h-6 w-6 mb-2" />
-              <span>View Assignments</span>
+              <FolderOpen className="h-6 w-6 mb-2" />
+              <span>View Projects</span>
             </Button>
             <Button 
               variant="secondary" 
