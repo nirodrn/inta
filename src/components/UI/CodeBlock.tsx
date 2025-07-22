@@ -1,8 +1,4 @@
-// src/components/UI/CodeBlock.tsx
-
 import React from 'react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface CodeBlockProps {
   code: string;
@@ -10,9 +6,9 @@ interface CodeBlockProps {
 
 const CodeBlock: React.FC<CodeBlockProps> = ({ code }) => {
   return (
-    <SyntaxHighlighter language="javascript" style={atomDark} customStyle={{ borderRadius: '0.5rem', margin: 0 }}>
-      {code}
-    </SyntaxHighlighter>
+    <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono">
+      <code>{code}</code>
+    </pre>
   );
 };
 

@@ -43,6 +43,7 @@ import SupervisorMeetings from './pages/supervisor/Meetings';
 import SupervisorReports from './pages/supervisor/Reports';
 import SupervisorProfile from './pages/supervisor/Profile';
 import SupervisorGroupChat from './pages/supervisor/SupervisorGroupChat';
+import SupervisorLeaderboard from './pages/supervisor/Leaderboard';
 import LoadingSpinner from './components/UI/LoadingSpinner';
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
@@ -438,6 +439,14 @@ function AppRoutes() {
                 element={
                   <ProtectedRoute allowedRoles={['supervisor']}>
                     <SupervisorGroupChat />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/supervisor/leaderboard"
+                element={
+                  <ProtectedRoute allowedRoles={['supervisor']}>
+                    <SupervisorLeaderboard />
                   </ProtectedRoute>
                 }
               />

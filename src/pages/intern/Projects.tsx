@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ref, get } from 'firebase/database';
+import { ref, get, update } from 'firebase/database';
 import { FolderOpen, Calendar, Clock, CheckCircle, AlertCircle, Users, User, ExternalLink } from 'lucide-react';
 import { database } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import Card from '../../components/UI/Card';
 import Button from '../../components/UI/Button';
+import toast from 'react-hot-toast';
 
 interface Project {
   id: string;
@@ -19,6 +20,8 @@ interface Project {
   status: 'active' | 'completed' | 'overdue';
   createdAt: string;
   updatedAt?: string;
+  completedBy?: string;
+  completedAt?: string;
 }
 
 interface Group {
@@ -32,6 +35,7 @@ export default function InternProjects() {
   const { currentUser } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<string | null>(null);
 
   useEffect(() => {
     if (currentUser?.uid) {
@@ -128,6 +132,31 @@ export default function InternProjects() {
         return AlertCircle;
       default:
         return Clock;
+    }
+  };
+
+  const handleMarkComplete = async (projectId: string) => {
+    if (updating) return;
+    
+    if (window.confirm('Are you sure you want to mark this project as completed?')) {
+      setUpdating(projectId);
+      
+      try {
+        await update(ref(database, `projects/${projectId}`), {
+          status: 'completed',
+          completedBy: currentUser?.uid,
+          completedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        
+        toast.success('Project marked as completed!');
+        fetchProjects();
+      } catch (error) {
+        console.error('Error updating project:', error);
+        toast.error('Failed to update project');
+      } finally {
+        setUpdating(null);
+      }
     }
   };
 
@@ -315,6 +344,21 @@ export default function InternProjects() {
                       Created: {new Date(project.createdAt).toLocaleDateString()}
                     </div>
                   </div>
+                  {project.status !== 'completed' && (
+                    <Button 
+                      variant="success" 
+                      size="sm"
+                      onClick={() => handleMarkComplete(project.id)}
+                      disabled={updating === project.id}
+                    >
+                      {updating === project.id ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      ) : (
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                      )}
+                      {updating === project.id ? 'Updating...' : 'Mark Complete'}
+                    </Button>
+                  )}
                 </div>
               </Card>
             </motion.div>

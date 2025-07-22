@@ -366,6 +366,22 @@ export default function ProjectAssignment() {
                       </div>
                     </div>
 
+                    {project.status === 'completed' && project.completedAt && (
+                      <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">
+                            Completed on {new Date(project.completedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {project.completedBy && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Marked complete by intern
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     <div className="mb-4">
                       <p className="text-xs text-gray-500 mb-2">Assignment Details</p>
                       <p className="text-sm font-medium">{getAssignmentDisplay(project)}</p>
@@ -373,7 +389,7 @@ export default function ProjectAssignment() {
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    {project.status !== 'completed' && (
+                    {project.status === 'active' && (
                       <Button 
                         variant="success" 
                         size="sm" 
@@ -381,7 +397,7 @@ export default function ProjectAssignment() {
                         disabled={submitting}
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        Complete
+                        Mark Complete
                       </Button>
                     )}
                     <Button 

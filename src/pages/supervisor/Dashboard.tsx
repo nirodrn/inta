@@ -47,12 +47,13 @@ export default function SupervisorDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const [groupsSnap, internsSnap, assignmentsSnap, submissionsSnap, gradesSnap] = await Promise.all([
+      const [groupsSnap, internsSnap, assignmentsSnap, submissionsSnap, gradesSnap, projectsSnap] = await Promise.all([
         get(ref(database, 'groups')),
         get(ref(database, 'acceptedInterns')),
         get(ref(database, 'assignments')),
         get(ref(database, 'submissions')),
         get(ref(database, 'grades')),
+        get(ref(database, 'projects')),
       ]);
 
       let supervisorInterns: any[] = [];
@@ -134,6 +135,25 @@ export default function SupervisorDashboard() {
                 action: `received grade for ${grade.assignmentTitle || 'assignment'}`,
                 time: new Date(grade.createdAt).toLocaleDateString(),
                 timestamp: new Date(grade.createdAt).getTime()
+              });
+            }
+          }
+        });
+      }
+
+      // Add project completion activities
+      if (projectsSnap.exists()) {
+        const projectsData = projectsSnap.val();
+        Object.entries(projectsData).forEach(([id, project]: [string, any]) => {
+          if (project.supervisorId === currentUser?.uid && project.status === 'completed' && project.completedBy) {
+            const intern = supervisorInterns.find(i => i.uid === project.completedBy);
+            if (intern && project.completedAt) {
+              recentActivityList.push({
+                type: 'project_completion',
+                intern: intern.name,
+                action: `completed project "${project.title}"`,
+                time: new Date(project.completedAt).toLocaleDateString(),
+                timestamp: new Date(project.completedAt).getTime()
               });
             }
           }

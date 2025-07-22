@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ref, get, push, update } from 'firebase/database';
-import { Star, Search, GraduationCap, Award, TrendingUp, MessageSquare, Users } from 'lucide-react';
+import { Star, Search, GraduationCap, Award, TrendingUp, MessageSquare, Users, Edit, Save, X } from 'lucide-react';
 import { database } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Intern } from '../../types';
@@ -33,6 +33,8 @@ export default function InternGrading() {
   const [showGradeModal, setShowGradeModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editingGrades, setEditingGrades] = useState<{ [key: string]: boolean }>({});
+  const [tempGrades, setTempGrades] = useState<{ [key: string]: { grade: string; feedback: string } }>({});
 
   const [gradeData, setGradeData] = useState({
     assignmentTitle: '',
@@ -194,6 +196,57 @@ export default function InternGrading() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleInlineEdit = (internId: string) => {
+    const internGrades = getInternGrades(internId);
+    const latestGrade = internGrades[0]; // Get most recent grade
+    
+    setTempGrades({
+      ...tempGrades,
+      [internId]: {
+        grade: latestGrade ? latestGrade.grade.toString() : '',
+        feedback: latestGrade ? latestGrade.feedback : ''
+      }
+    });
+    setEditingGrades({ ...editingGrades, [internId]: true });
+  };
+
+  const handleSaveInlineEdit = async (internId: string) => {
+    const tempData = tempGrades[internId];
+    if (!tempData || !tempData.grade || !tempData.feedback.trim()) {
+      toast.error('Grade and feedback are required');
+      return;
+    }
+
+    try {
+      const gradeData = {
+        internId,
+        supervisorId: currentUser?.uid,
+        supervisorName: currentUser?.name,
+        assignmentTitle: 'Quick Grade Update',
+        grade: parseFloat(tempData.grade),
+        maxGrade: 100,
+        feedback: tempData.feedback.trim(),
+        category: 'general',
+        createdAt: new Date().toISOString(),
+      };
+
+      await push(ref(database, 'grades'), gradeData);
+      
+      setEditingGrades({ ...editingGrades, [internId]: false });
+      setTempGrades({ ...tempGrades, [internId]: { grade: '', feedback: '' } });
+      toast.success('Grade updated successfully!');
+      fetchData();
+    } catch (error) {
+      console.error('Error updating grade:', error);
+      toast.error('Failed to update grade');
+    }
+  };
+
+  const handleCancelInlineEdit = (internId: string) => {
+    setEditingGrades({ ...editingGrades, [internId]: false });
+    setTempGrades({ ...tempGrades, [internId]: { grade: '', feedback: '' } });
   };
 
   const getInternGrades = (internId: string) => {
@@ -369,6 +422,136 @@ export default function InternGrading() {
           </div>
         </Card>
       )}
+
+      {/* Interns Grading Table */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Grade Management</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Intern
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    University
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Current Grade
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Latest Feedback
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredInterns.map((intern) => {
+                  const internGrades = getInternGrades(intern.uid);
+                  const averageGrade = getInternAverageGrade(intern.uid);
+                  const latestGrade = internGrades[0];
+                  const isEditing = editingGrades[intern.uid];
+                  const tempData = tempGrades[intern.uid];
+                  
+                  return (
+                    <tr key={intern.uid}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                            <GraduationCap className="h-5 w-5 text-white" />
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{intern.name}</div>
+                            <div className="text-sm text-gray-500">
+                              {intern.nickname ? `"${intern.nickname}"` : 'No nickname'}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {intern.university}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={tempData?.grade || ''}
+                            onChange={(e) => setTempGrades({
+                              ...tempGrades,
+                              [intern.uid]: { ...tempData, grade: e.target.value }
+                            })}
+                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                            placeholder="Grade"
+                          />
+                        ) : (
+                          <div className="flex items-center">
+                            <Award className={`h-4 w-4 mr-2 ${averageGrade >= 80 ? 'text-green-500' : averageGrade >= 60 ? 'text-yellow-500' : 'text-red-500'}`} />
+                            <span className={`font-medium ${averageGrade >= 80 ? 'text-green-600' : averageGrade >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                              {averageGrade}%
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        {isEditing ? (
+                          <textarea
+                            value={tempData?.feedback || ''}
+                            onChange={(e) => setTempGrades({
+                              ...tempGrades,
+                              [intern.uid]: { ...tempData, feedback: e.target.value }
+                            })}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            rows={2}
+                            placeholder="Feedback"
+                          />
+                        ) : (
+                          <div className="text-sm text-gray-900 max-w-xs truncate">
+                            {latestGrade?.feedback || 'No feedback yet'}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {isEditing ? (
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleSaveInlineEdit(intern.uid)}
+                              className="text-green-600 hover:text-green-900"
+                            >
+                              <Save className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleCancelInlineEdit(intern.uid)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleInlineEdit(intern.uid)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </motion.div>
 
       {/* Grade Modal */}
       <Modal

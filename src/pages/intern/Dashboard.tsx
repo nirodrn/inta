@@ -225,7 +225,9 @@ export default function InternDashboard() {
               id: `project-${id}`,
               type: 'project',
               title: project.title,
-              description: `Project status: ${project.status}`,
+              description: project.status === 'completed' 
+                ? `Project completed ${project.completedAt ? 'on ' + new Date(project.completedAt).toLocaleDateString() : ''}`
+                : `Project status: ${project.status}`,
               date: project.createdAt,
               status: project.status
             });

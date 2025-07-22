@@ -74,6 +74,7 @@ const navigationItems: Record<string, NavItem[]> = {
     { path: '/supervisor/document-upload', label: 'Document Upload', icon: Upload },
     { path: '/supervisor/meetings', label: 'Meetings', icon: Calendar },
     { path: '/supervisor/reports', label: 'Reports', icon: BarChart3 },
+    { path: '/supervisor/leaderboard', label: 'Leaderboard', icon: Trophy },
     { path: '/supervisor/profile', label: 'Profile', icon: Settings },
      { path: '/supervisor/group-chat', label: 'Group Chat', icon: MessageSquare },
   ],
@@ -90,9 +91,9 @@ export default function Sidebar() {
     <motion.div
       initial={{ x: -300 }}
       animate={{ x: 0 }}
-      className="bg-white shadow-lg h-full w-64 fixed left-0 top-16 z-40 border-r border-gray-200"
+      className="bg-white shadow-lg h-full w-64 fixed left-0 top-16 z-40 border-r border-gray-200 overflow-hidden"
     >
-      <div className="p-4">
+      <div className="p-4 h-full overflow-y-auto">
         <nav className="space-y-2">
           {navItems.map((item, index) => (
             <motion.div
